@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
-import { ScenarioType } from './types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ScenarioType, SimulationInputs } from './types';
 import { formatCurrency } from './utils/math';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area
+  AreaChart, Area, LineChart, Line
 } from 'recharts';
+import {
+  LayoutDashboard, Wallet, TrendingUp, Settings, ChevronRight, ChevronLeft,
+  Plus, Trash2, Save, RotateCcw, CheckCircle2, AlertTriangle, Info,
+  ArrowUpRight, ArrowDownRight, DollarSign, Users, Percent, Calendar,
+  Lightbulb, BarChart3, Activity, Target, Zap, TrendingDown, Shield,
+  PieChart, LineChart as LineChartIcon, ScatterChart, MoveRight
+} from 'lucide-react';
 
 import { useSimulator } from './hooks/useSimulator';
 import { InputGroup } from './components/InputGroup/InputGroup';
@@ -55,9 +62,9 @@ const App: React.FC = () => {
   };
 
   // Update what-if base value when variable changes
-  React.useEffect(() => {
+  useEffect(() => {
     setWhatIfBaseValue(inputs[whatIfVariable] as number);
-    
+
     // Set appropriate range based on variable
     const ranges: Record<string, { min: number; max: number; step: number }> = {
       churnRate: { min: 1, max: 50, step: 5 },
@@ -79,7 +86,7 @@ const App: React.FC = () => {
   }, [whatIfVariable, inputs]);
 
   // Generate what-if data
-  const whatIfData = React.useMemo(() => {
+  const whatIfData = useMemo(() => {
     const values: number[] = [];
     const { min, max, step } = whatIfRange;
     for (let v = min; v <= max; v += step) {
@@ -100,81 +107,125 @@ const App: React.FC = () => {
     });
   }, [whatIfVariable, whatIfRange, inputs, totalMonthlyFixedCosts]);
 
+  // What-if insights
+  const whatIfInsights = useMemo(() => {
+    const base = whatIfData.find(d => Math.abs(d.value - whatIfBaseValue) < 0.1) || whatIfData[0];
+    const best = whatIfData.reduce((max, d) => d.netProfit12Months > max.netProfit12Months ? d : max, whatIfData[0]);
+    const worst = whatIfData.reduce((min, d) => d.netProfit12Months < min.netProfit12Months ? d : min, whatIfData[0]);
+
+    const profitImprovement = best.netProfit12Months - base.netProfit12Months;
+    const profitDecline = base.netProfit12Months - worst.netProfit12Months;
+    const improvementPercent = base.netProfit12Months !== 0 ? ((profitImprovement / Math.abs(base.netProfit12Months)) * 100) : 0;
+
+    return { base, best, worst, profitImprovement, profitDecline, improvementPercent };
+  }, [whatIfData, whatIfBaseValue]);
+
+  const variableLabels: Record<keyof SimulationInputs, string> = {
+    churnRate: 'معدل الإلغاء',
+    avgRetentionMonths: 'مدة البقاء',
+    partnerCount: 'عدد الشركاء',
+    avgReferralsPerPartner: 'الإحالات لكل شريك',
+    firstMonthCommission: 'عمولة الشهر الأول',
+    recurringCommission: 'العمولة المتكررة',
+    upfrontFeePerPartner: 'المكافأة الأولية',
+    avgSubscriptionPrice: 'سعر الاشتراك',
+    influencerDiscount: 'خصم المؤثر',
+    conversionRate: 'معدل التحويل',
+    refundRate: 'معدل الاسترداد',
+    infraCostPerUser: 'تكلفة البنية',
+    paymentGatewayFee: 'رسوم الدفع',
+    supportCostPerUser: 'تكلفة الدعم'
+  };
+
   return (
-    <div className="min-h-screen pb-20">
-      <header className="bg-slate-900 text-white py-8 px-6 shadow-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="bg-indigo-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">Strategic Simulator</span>
-              <h1 className="text-2xl font-bold tracking-tight">رادار المستثمر: محاكي القرارات الاستراتيجية</h1>
+    <div className="min-h-screen pb-20" dir="rtl">
+      <header className="bg-slate-900 text-white py-6 px-6 shadow-xl sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <TrendingUp className="w-7 h-7 text-white" />
             </div>
-            <p className="text-slate-400 text-sm">أداة قياس الوحدة الاقتصادية (Unit Economics) لاتخاذ قرارات برنامج الشركاء</p>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border border-indigo-500/30">Strategic Simulator</span>
+              </div>
+              <h1 className="text-xl font-bold tracking-tight">رادار المستثمر</h1>
+              <p className="text-slate-400 text-xs">محاكي القرارات الاستراتيجية</p>
+            </div>
           </div>
-          
-          <div className="flex flex-col gap-3">
-            <div className="flex bg-slate-800 p-1 rounded-lg">
+
+          <div className="flex flex-col gap-3 w-full lg:w-auto">
+            <div className="flex bg-slate-800/50 p-1 rounded-xl backdrop-blur-sm">
               {(Object.keys(ScenarioType) as ScenarioType[]).map((type) => (
                 <button
                   key={type}
                   onClick={() => handleScenarioChange(type)}
-                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeScenario === type
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+                    activeScenario === type
                       ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white'
-                    }`}
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                  }`}
                 >
-                  {type === ScenarioType.OPTIMISTIC ? '🚀 متفائل' : type === ScenarioType.REALISTIC ? '⚖️ واقعي' : '⚠️ متشائم'}
+                  {type === ScenarioType.OPTIMISTIC && <Zap className="w-4 h-4" />}
+                  {type === ScenarioType.REALISTIC && <Target className="w-4 h-4" />}
+                  {type === ScenarioType.PESSIMISTIC && <Shield className="w-4 h-4" />}
+                  <span className="hidden sm:inline">{type === ScenarioType.OPTIMISTIC ? 'متفائل' : type === ScenarioType.REALISTIC ? 'واقعي' : 'متشائم'}</span>
                 </button>
               ))}
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="px-4 py-2 bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-colors text-sm"
+                className="p-2.5 bg-slate-800/50 text-slate-400 rounded-xl hover:text-white hover:bg-slate-700/50 transition-colors"
+                title={isSidebarOpen ? 'إخفاء القائمة' : 'إظهار القائمة'}
               >
-                {isSidebarOpen ? '🗂️ إخفاء القائمة' : '🗂️ إظهار القائمة'}
+                {isSidebarOpen ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
               </button>
-              <div className="flex bg-slate-800 p-1 rounded-lg">
+              <div className="flex bg-slate-800/50 p-1 rounded-xl backdrop-blur-sm flex-1">
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                     activeTab === 'dashboard'
                       ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                   }`}
                 >
-                  📊 الرئيسية
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span className="hidden sm:inline">الرئيسية</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('costs')}
-                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                     activeTab === 'costs'
                       ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                   }`}
                 >
-                  💰 التكاليف
+                  <Wallet className="w-4 h-4" />
+                  <span className="hidden sm:inline">التكاليف</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('whatif')}
-                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                     activeTab === 'whatif'
                       ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                   }`}
                 >
-                  🔮 ماذا لو
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="hidden sm:inline">ماذا لو</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('settings')}
-                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                     activeTab === 'settings'
                       ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                   }`}
                 >
-                  ⚙️ الإعدادات
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">الإعدادات</span>
                 </button>
               </div>
             </div>
@@ -188,9 +239,9 @@ const App: React.FC = () => {
           <>
             {isSidebarOpen && (
               <aside className="lg:col-span-4 space-y-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-32 max-h-[80vh] overflow-y-auto">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-32 max-h-[calc(100vh-8rem)] overflow-y-auto">
                   <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    <Settings className="w-5 h-5 text-indigo-600" />
                     مدخلات القرار
                   </h2>
 
@@ -208,7 +259,7 @@ const App: React.FC = () => {
                       onChange={(v) => updateInput('recurringCommission', v)}
                     />
                     <RangeInput
-                      label="مكافأة أولية لكل شريك (ثابتة)"
+                      label="مكافأة أولية لكل شريك"
                       value={inputs.upfrontFeePerPartner}
                       min={0} max={10000} step={100} suffix=" ر.س"
                       onChange={(v) => updateInput('upfrontFeePerPartner', v)}
@@ -238,7 +289,7 @@ const App: React.FC = () => {
                       onChange={(v) => updateInput('churnRate', v)}
                     />
                     <RangeInput
-                      label="متوسط مدة البقاء (أشهر)"
+                      label="متوسط مدة البقاء"
                       value={inputs.avgRetentionMonths}
                       min={1} max={24}
                       onChange={(v) => updateInput('avgRetentionMonths', v)}
@@ -264,35 +315,37 @@ const App: React.FC = () => {
             )}
 
             <section className={isSidebarOpen ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-8>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <MetricCard
                   label="LTV (القيمة الدائمة)"
                   value={formatCurrency(metrics.ltv)}
-                  description="صافي الربح المتوقع من العميل الواحد بعد خصم العمولات والمصاريف"
+                  description="صافي الربح المتوقع من العميل الواحد"
                   status={metrics.ltv > (metrics.cac * 3) ? 'success' : metrics.ltv > (metrics.cac * 2) ? 'warning' : 'danger'}
                 />
                 <MetricCard
                   label="CAC (تكلفة الاستحواذ)"
                   value={formatCurrency(metrics.cac)}
-                  description="إجمالي ما يتم صرفه للحصول على العميل (العمولة + نصيب المكافأة الثابتة)"
+                  description="تكلفة الحصول على العميل"
                 />
                 <MetricCard
                   label="هامش الربح"
                   value={(metrics.grossMarginPercentage).toFixed(1) + '%'}
                   status={metrics.grossMarginPercentage < 30 ? 'danger' : 'default'}
-                  description="نسبة الربح المتبقية من إيراد العميل الكلي"
+                  description="نسبة الربح المتبقية"
                 />
                 <MetricCard
                   label="إجمالي المشتركين"
                   value={metrics.totalSubscribers.toLocaleString()}
-                  description="العدد الكلي المتوقع للمشتركين عبر شبكة الشركاء"
+                  description="العدد الكلي للمشتركين"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-slate-800 mb-6">توقعات الأرباح (صافي)</h3>
+                  <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-indigo-600" />
+                    توقعات الأرباح
+                  </h3>
                   <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
@@ -310,7 +363,10 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-slate-800 mb-6">مؤشرات الجدوى</h3>
+                  <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-indigo-600" />
+                    مؤشرات الجدوى
+                  </h3>
                   <div className="space-y-4">
                     {riskIndicators.map((indicator, idx) => (
                       <RiskIndicatorItem key={idx} indicator={indicator} />
@@ -321,8 +377,8 @@ const App: React.FC = () => {
 
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <svg className="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.674a1 1 0 00.996-1.09L14.547 11.268A4.996 4.996 0 0012 10.5c-2.76 0-5 2.24-5 5 0 .282.023.558.067.828L7.56 16.1a1 1 0 00.996 1.09h1.107zM12 21v-4"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 5h-3m-12 0H3m15.364 4.364l-2.121-2.121M6.757 6.757l-2.121-2.121m12.728 0l2.121 2.121M6.757 17.243l2.121-2.121"></path></svg>
-                  توصيات استراتيجية للقرار
+                  <Lightbulb className="w-6 h-6 text-amber-500" />
+                  توصيات استراتيجية
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {strategicAdvice.map((advice, idx) => (
@@ -331,11 +387,16 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-indigo-900 text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+              <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 text-white p-8 rounded-3xl shadow-2xl relative overflow-hidden">
                 <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                   <div>
-                    <h3 className="text-xl font-bold mb-4">الخلاصة التنفيذية</h3>
-                    <p className="text-slate-300 text-sm mb-6 leading-relaxed">بناءً على المعايير الحالية، نظام الشراكة يولد عائداً صافياً جيداً للسنة الأولى. {metrics.paybackPeriod < 4 ? "نموذجك المالي قوي جداً ويسمح بالتوسع الهجومي." : "تحتاج إلى مراقبة التدفقات النقدية بعناية في الأشهر الأولى."}</p>
+                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                      <PieChart className="w-6 h-6" />
+                      الخلاصة التنفيذية
+                    </h3>
+                    <p className="text-slate-300 text-sm mb-6 leading-relaxed">
+                      بناءً على المعايير الحالية، نظام الشراكة يولد عائداً صافياً جيداً للسنة الأولى. {metrics.paybackPeriod < 4 ? "نموذجك المالي قوي جداً ويسمح بالتوسع الهجومي." : "تحتاج إلى مراقبة التدفقات النقدية بعناية في الأشهر الأولى."}
+                    </p>
                     <div className="flex gap-4">
                       <div className="text-center bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/10 flex-1">
                         <p className="text-[10px] text-indigo-200 uppercase mb-1">صافي ربح 12 شهر</p>
@@ -348,7 +409,10 @@ const App: React.FC = () => {
                     </div>
                   </div>
                   <div className="bg-white/5 p-6 rounded-3xl border border-white/10">
-                    <h4 className="text-sm font-bold text-indigo-200 mb-4 text-center">تأثير الإلغاء على الأرباح</h4>
+                    <h4 className="text-sm font-bold text-indigo-200 mb-4 text-center flex items-center justify-center gap-2">
+                      <LineChartIcon className="w-4 h-4" />
+                      تأثير الإلغاء على الأرباح
+                    </h4>
                     <div className="h-40">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={[5, 10, 15, 20, 25, 30].map(c => ({ churn: c + '%', profit: calculateMetrics({ ...inputs, churnRate: c }, totalMonthlyFixedCosts).netProfit12Months }))}>
@@ -361,7 +425,6 @@ const App: React.FC = () => {
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500 rounded-full blur-[120px] opacity-20 -mr-32 -mt-32"></div>
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500 rounded-full blur-[120px] opacity-20 -ml-32 -mb-32"></div>
               </div>
-
             </section>
           </>
         )}
@@ -370,9 +433,7 @@ const App: React.FC = () => {
           <section className="lg:col-span-12 space-y-6">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 36v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
+                <Wallet className="w-6 h-6 text-indigo-600" />
                 التكاليف الشهرية الثابتة
               </h2>
 
@@ -400,19 +461,20 @@ const App: React.FC = () => {
               </div>
               <button
                 onClick={handleAddCost}
-                className="w-full md:w-auto px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                className="w-full md:w-auto px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                </svg>
+                <Plus className="w-5 h-5" />
                 إضافة تكلفة
               </button>
             </div>
 
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-slate-800">قائمة التكاليف</h3>
-                <div className="text-right">
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-indigo-600" />
+                  قائمة التكاليف
+                </h3>
+                <div className="text-left">
                   <p className="text-sm text-slate-500">إجمالي التكاليف الشهرية</p>
                   <p className="text-2xl font-bold text-indigo-600">{formatCurrency(totalMonthlyFixedCosts)}</p>
                 </div>
@@ -423,9 +485,7 @@ const App: React.FC = () => {
                   <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 36v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
+                        <DollarSign className="w-5 h-5 text-indigo-600" />
                       </div>
                       <div>
                         <p className="font-semibold text-slate-800">{item.name}</p>
@@ -437,36 +497,46 @@ const App: React.FC = () => {
                         type="number"
                         value={item.amount}
                         onChange={(e) => updateCostItem(item.id, { amount: Number(e.target.value) })}
-                        className="w-32 px-3 py-1 text-right border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                        className="w-32 px-3 py-1 text-left border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
                       />
                       <button
                         onClick={() => deleteCostItem(item.id)}
                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
                 ))}
                 {costItems.filter(c => c.type === 'fixed').length === 0 && (
-                  <p className="text-center text-slate-500 py-8">لا توجد تكاليف مضافة</p>
+                  <p className="text-center text-slate-500 py-8 flex items-center justify-center gap-2">
+                    <Info className="w-5 h-5" />
+                    لا توجد تكاليف مضافة
+                  </p>
                 )}
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-6 rounded-2xl shadow-lg">
-                <p className="text-sm opacity-80 mb-1">التكاليف السنوية</p>
+                <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  التكاليف السنوية
+                </p>
                 <p className="text-3xl font-bold">{formatCurrency(totalMonthlyFixedCosts * 12)}</p>
               </div>
               <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-6 rounded-2xl shadow-lg">
-                <p className="text-sm opacity-80 mb-1">صافي الربح (12 شهر)</p>
+                <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  صافي الربح (12 شهر)
+                </p>
                 <p className="text-3xl font-bold">{formatCurrency(metrics.netProfit12Months)}</p>
               </div>
               <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-6 rounded-2xl shadow-lg">
-                <p className="text-sm opacity-80 mb-1">نقطة التعادل الشهرية</p>
+                <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
+                  <Target className="w-4 h-4" />
+                  نقطة التعادل
+                </p>
                 <p className="text-3xl font-bold">{formatCurrency(totalMonthlyFixedCosts / (metrics.grossMarginPercentage / 100) || 0)}</p>
               </div>
             </div>
@@ -475,48 +545,66 @@ const App: React.FC = () => {
 
         {activeTab === 'whatif' && (
           <section className="lg:col-span-12 space-y-6">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                محاكاة "ماذا لو" - تحليل الحساسية
-              </h2>
-              
-              <p className="text-slate-600 mb-6 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                🔮 اختر متغيراً وشاهد كيف يؤثر تغييره على النتائج المالية. هذا يساعدك على فهم العوامل الأكثر تأثيراً في نجاح نموذج العمل.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white p-8 rounded-3xl shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                  <TrendingUp className="w-7 h-7" />
+                </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">المتغير للتحليل</label>
+                  <h2 className="text-2xl font-bold">محاكاة ماذا لو</h2>
+                  <p className="text-white/80 text-sm">تحليل الحساسية - افهم تأثير كل متغير على أرباحك</p>
+                </div>
+              </div>
+              <p className="text-white/90 text-sm bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
+                <Lightbulb className="w-4 h-4 inline ml-2" />
+                اختر متغيراً من القائمة وشاهد كيف يؤثر تغييره على النتائج المالية. حرك الشريط لاستكشاف السيناريوهات المختلفة.
+              </p>
+            </div>
+
+            {/* Controls */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    اختر المتغير للتحليل
+                  </label>
                   <select
                     value={whatIfVariable}
                     onChange={(e) => setWhatIfVariable(e.target.value as keyof SimulationInputs)}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white text-right font-medium"
                   >
-                    <option value="churnRate">معدل الإلغاء الشهري %</option>
-                    <option value="avgRetentionMonths">متوسط مدة البقاء (أشهر)</option>
-                    <option value="partnerCount">عدد الشركاء الفاعلين</option>
-                    <option value="avgReferralsPerPartner">متوسط الإحالات لكل شريك</option>
-                    <option value="firstMonthCommission">عمولة الشهر الأول %</option>
-                    <option value="recurringCommission">العمولة المتكررة %</option>
-                    <option value="upfrontFeePerPartner">المكافأة الأولية لكل شريك (ر.س)</option>
-                    <option value="avgSubscriptionPrice">متوسط سعر الاشتراك (ر.س)</option>
-                    <option value="influencerDiscount">خصم المؤثر %</option>
-                    <option value="conversionRate">معدل التحويل %</option>
-                    <option value="refundRate">معدل الاسترداد %</option>
-                    <option value="infraCostPerUser">تكلفة البنية التحتية للمستخدم (ر.س)</option>
-                    <option value="paymentGatewayFee">رسوم بوابة الدفع %</option>
-                    <option value="supportCostPerUser">تكلفة الدعم للمستخدم (ر.س)</option>
+                    <option value="churnRate">📉 معدل الإلغاء الشهري</option>
+                    <option value="avgRetentionMonths">📅 متوسط مدة البقاء (أشهر)</option>
+                    <option value="partnerCount">👥 عدد الشركاء الفاعلين</option>
+                    <option value="avgReferralsPerPartner">🔗 متوسط الإحالات لكل شريك</option>
+                    <option value="firstMonthCommission">💰 عمولة الشهر الأول</option>
+                    <option value="recurringCommission">💵 العمولة المتكررة</option>
+                    <option value="upfrontFeePerPartner">🎁 المكافأة الأولية لكل شريك</option>
+                    <option value="avgSubscriptionPrice">🏷️ متوسط سعر الاشتراك</option>
+                    <option value="influencerDiscount">🏷️ خصم المؤثر</option>
+                    <option value="conversionRate">📊 معدل التحويل</option>
+                    <option value="refundRate">↩️ معدل الاسترداد</option>
+                    <option value="infraCostPerUser">🖥️ تكلفة البنية التحتية</option>
+                    <option value="paymentGatewayFee">💳 رسوم بوابة الدفع</option>
+                    <option value="supportCostPerUser">🎧 تكلفة الدعم</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    القيمة الحالية: <span className="text-indigo-600">{whatIfBaseValue}</span>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <MoveRight className="w-4 h-4" />
+                    حرك الشريط للتغيير
                   </label>
-                  <div className="flex items-center gap-4">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-slate-600">القيمة الحالية:</span>
+                      <span className="text-2xl font-bold text-indigo-600">
+                        {whatIfBaseValue}
+                        {(whatIfVariable as string).includes('Rate') || (whatIfVariable as string).includes('Commission') || (whatIfVariable as string).includes('Discount') || (whatIfVariable as string).includes('Fee') ? '%' : ''}
+                      </span>
+                    </div>
                     <input
                       type="range"
                       min={whatIfRange.min}
@@ -528,58 +616,93 @@ const App: React.FC = () => {
                         setWhatIfBaseValue(val);
                         updateInput(whatIfVariable, val);
                       }}
-                      className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                      className="w-full h-3 bg-slate-200 rounded-full appearance-none cursor-pointer accent-indigo-600"
                     />
-                    <span className="text-sm text-slate-500 w-20 text-left">
-                      {whatIfRange.min} - {whatIfRange.max}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white p-6 rounded-2xl shadow-lg mb-6">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  تأثير المتغير على المقاييس الرئيسية
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  {whatIfData.map((data, idx) => (
-                    <div key={idx} className={`text-center p-3 rounded-lg ${data.value === whatIfBaseValue ? 'bg-white/30 ring-2 ring-white' : 'bg-white/10'}`}>
-                      <p className="text-xs opacity-80 mb-1">{data.value}{whatIfVariable.includes('Rate') || whatIfVariable.includes('Commission') || whatIfVariable.includes('Discount') || whatIfVariable.includes('Fee') ? '%' : ''}</p>
-                      <p className="text-lg font-bold">{formatCurrency(data.netProfit12Months)}</p>
-                      <p className="text-[10px] opacity-70">ربح سنوي</p>
+                    <div className="flex justify-between mt-2 text-xs text-slate-500">
+                      <span>{whatIfRange.min}</span>
+                      <span>{whatIfRange.max}</span>
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Key Metrics Overview */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {whatIfData.map((data, idx) => {
+                const isCurrent = Math.abs(data.value - whatIfBaseValue) < 0.1;
+                const isBest = data.netProfit12Months === whatIfInsights.best.netProfit12Months;
+                const isWorst = data.netProfit12Months === whatIfInsights.worst.netProfit12Months;
+
+                return (
+                  <div
+                    key={idx}
+                    className={`text-center p-4 rounded-xl transition-all ${
+                      isCurrent
+                        ? 'bg-indigo-600 text-white shadow-lg scale-105 ring-2 ring-indigo-300'
+                        : isBest
+                        ? 'bg-emerald-50 border-2 border-emerald-500'
+                        : isWorst
+                        ? 'bg-red-50 border-2 border-red-500'
+                        : 'bg-white border border-slate-200 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 mb-2">
+                      <span className={`text-sm font-bold ${isCurrent ? 'text-white' : 'text-slate-700'}`}>
+                        {data.value}
+                      </span>
+                      {(whatIfVariable as string).includes('Rate') || (whatIfVariable as string).includes('Commission') || (whatIfVariable as string).includes('Discount') || (whatIfVariable as string).includes('Fee') ? (
+                        <Percent className={`w-3 h-3 ${isCurrent ? 'text-white' : 'text-slate-500'}`} />
+                      ) : null}
+                    </div>
+                    <p className={`text-xs mb-1 ${isCurrent ? 'text-white/80' : 'text-slate-500'}`}>
+                      {variableLabels[whatIfVariable]}
+                    </p>
+                    <p className={`text-lg font-bold ${isCurrent ? 'text-white' : isBest ? 'text-emerald-600' : isWorst ? 'text-red-600' : 'text-slate-800'}`}>
+                      {formatCurrency(data.netProfit12Months)}
+                    </p>
+                    <p className={`text-[10px] ${isCurrent ? 'text-white/70' : 'text-slate-400'}`}>
+                      ربح سنوي
+                    </p>
+                    {isBest && !isCurrent && (
+                      <span className="inline-block mt-1 text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full">أفضل قيمة</span>
+                    )}
+                    {isWorst && !isCurrent && (
+                      <span className="inline-block mt-1 text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full">أسوأ قيمة</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Profit Chart */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  تأثير على صافي الربح (12 شهر)
-                </h3>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    تأثير على صافي الربح
+                  </h3>
+                  <span className="text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full">12 شهر</span>
+                </div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={whatIfData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="value" 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <XAxis
+                        dataKey="value"
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 11 }}
-                        label={{ value: whatIfVariable, position: 'insideBottom', offset: -5 }}
                       />
                       <YAxis hide />
                       <Tooltip
                         formatter={(value: any) => formatCurrency(value)}
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                        labelFormatter={(label) => `${whatIfVariable}: ${label}${whatIfVariable.includes('Rate') || whatIfVariable.includes('Commission') || whatIfVariable.includes('Discount') || whatIfVariable.includes('Fee') ? '%' : ''}`}
+                        labelFormatter={(label) => `${variableLabels[whatIfVariable]}: ${label}`}
                       />
                       <Bar dataKey="netProfit12Months" fill="#10b981" radius={[6, 6, 0, 0]} />
                     </BarChart>
@@ -587,21 +710,25 @@ const App: React.FC = () => {
                 </div>
               </div>
 
+              {/* LTV Chart */}
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                  تأثير على LTV (القيمة الدائمة)
-                </h3>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <DollarSign className="w-4 h-4 text-amber-600" />
+                    </div>
+                    تأثير على LTV
+                  </h3>
+                  <span className="text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full">القيمة الدائمة</span>
+                </div>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={whatIfData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="value" 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <XAxis
+                        dataKey="value"
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 11 }}
                       />
                       <YAxis hide />
@@ -616,48 +743,190 @@ const App: React.FC = () => {
               </div>
             </div>
 
+            {/* Insights Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <p className="text-sm text-slate-500 mb-2">القيمة المثلى</p>
-                <p className="text-2xl font-bold text-emerald-600">
-                  {whatIfData.reduce((max, d) => d.netProfit12Months > max.netProfit12Months ? d : max, whatIfData[0]).value}
-                  {whatIfVariable.includes('Rate') || whatIfVariable.includes('Commission') || whatIfVariable.includes('Discount') || whatIfVariable.includes('Fee') ? '%' : ''}
+              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-2xl border border-emerald-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                    <ArrowUpRight className="w-4 h-4 text-white" />
+                  </div>
+                  <p className="text-sm font-semibold text-emerald-800">القيمة المثلى</p>
+                </div>
+                <p className="text-3xl font-bold text-emerald-600 mb-1">
+                  {whatIfInsights.best.value}
+                  {(whatIfVariable as string).includes('Rate') || (whatIfVariable as string).includes('Commission') || (whatIfVariable as string).includes('Discount') || (whatIfVariable as string).includes('Fee') ? '%' : ''}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">تعطي أعلى ربح</p>
+                <p className="text-xs text-emerald-600 mb-2">تعطي أعلى ربح: {formatCurrency(whatIfInsights.best.netProfit12Months)}</p>
+                <div className="text-xs text-emerald-700 bg-emerald-100 px-2 py-1 rounded inline-block">
+                  +{formatCurrency(whatIfInsights.profitImprovement)} عن الحالي
+                </div>
               </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <p className="text-sm text-slate-500 mb-2">أسوأ قيمة</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {whatIfData.reduce((min, d) => d.netProfit12Months < min.netProfit12Months ? d : min, whatIfData[0]).value}
-                  {whatIfVariable.includes('Rate') || whatIfVariable.includes('Commission') || whatIfVariable.includes('Discount') || whatIfVariable.includes('Fee') ? '%' : ''}
+
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-2xl border border-slate-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-indigo-500 rounded-lg flex items-center justify-center">
+                    <Target className="w-4 h-4 text-white" />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-800">القيمة الحالية</p>
+                </div>
+                <p className="text-3xl font-bold text-indigo-600 mb-1">
+                  {whatIfBaseValue}
+                  {(whatIfVariable as string).includes('Rate') || (whatIfVariable as string).includes('Commission') || (whatIfVariable as string).includes('Discount') || (whatIfVariable as string).includes('Fee') ? '%' : ''}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">تعطي أقل ربح</p>
+                <p className="text-xs text-slate-600 mb-2">ربح سنوي: {formatCurrency(whatIfInsights.base.netProfit12Months)}</p>
+                <div className="text-xs text-slate-700 bg-slate-200 px-2 py-1 rounded inline-block">
+                  {whatIfInsights.improvementPercent > 0 ? '+' : ''}{whatIfInsights.improvementPercent.toFixed(1)}% للتحسين
+                </div>
               </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <p className="text-sm text-slate-500 mb-2">نطاق الربحية</p>
-                <p className="text-2xl font-bold text-indigo-600">
-                  {formatCurrency(whatIfData.reduce((max, d) => d.netProfit12Months > max ? d.netProfit12Months : max, whatIfData[0].netProfit12Months) - whatIfData.reduce((min, d) => d.netProfit12Months < min ? d.netProfit12Months : min, whatIfData[0].netProfit12Months))}
+
+              <div className="bg-gradient-to-br from-red-50 to-red-100 p-6 rounded-2xl border border-red-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
+                    <ArrowDownRight className="w-4 h-4 text-white" />
+                  </div>
+                  <p className="text-sm font-semibold text-red-800">أسوأ قيمة</p>
+                </div>
+                <p className="text-3xl font-bold text-red-600 mb-1">
+                  {whatIfInsights.worst.value}
+                  {(whatIfVariable as string).includes('Rate') || (whatIfVariable as string).includes('Commission') || (whatIfVariable as string).includes('Discount') || (whatIfVariable as string).includes('Fee') ? '%' : ''}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">الفرق بين الأفضل والأسوأ</p>
+                <p className="text-xs text-red-600 mb-2">تعطي أقل ربح: {formatCurrency(whatIfInsights.worst.netProfit12Months)}</p>
+                <div className="text-xs text-red-700 bg-red-100 px-2 py-1 rounded inline-block">
+                  -{formatCurrency(whatIfInsights.profitDecline)} عن الحالي
+                </div>
               </div>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
-              <h4 className="font-bold text-amber-800 mb-3 flex items-center gap-2">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                توصية ذكية
+            {/* Smart Recommendation */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Lightbulb className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
+                    توصية ذكية
+                    <span className="text-xs font-normal text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full">بناءً على تحليلك</span>
+                  </h4>
+                  <p className="text-amber-700 text-sm leading-relaxed">
+                    {whatIfVariable === 'churnRate' && (
+                      <>
+                        <strong className="block mb-2">🎯 معدل الإلغاء هو العامل الأهم!</strong>
+                        تخفيض معدل الإلغاء بنسبة 5% يمكن أن يزيد أرباحك بنسبة {whatIfInsights.improvementPercent.toFixed(1)}%.
+                        ركّز على:
+                        <ul className="mt-2 space-y-1 mr-4 list-disc">
+                          <li>تحسين تجربة المستخدم داخل المنصة</li>
+                          <li>إضافة محتوى جديد بانتظام</li>
+                          <li>برنامج ولاء للعملاء طويلي الأمد</li>
+                          <li>متابعة العملاء الذين يوشكون على الإلغاء</li>
+                        </ul>
+                      </>
+                    )}
+                    {whatIfVariable === 'avgSubscriptionPrice' && (
+                      <>
+                        <strong className="block mb-2">💰 استراتيجية التسعير</strong>
+                        زيادة السعر قد ترفع الأرباح، لكن اختبر أولاً:
+                        <ul className="mt-2 space-y-1 mr-4 list-disc">
+                          <li>قدّم خططاً متعددة (أساسي، محترف، مميز)</li>
+                          <li>اختبر السعر على شريحة صغيرة من العملاء</li>
+                          <li>أضف قيمة مبررة للسعر الأعلى</li>
+                          <li>راقب معدل التحويل بعد كل تغيير</li>
+                        </ul>
+                      </>
+                    )}
+                    {whatIfVariable === 'partnerCount' && (
+                      <>
+                        <strong className="block mb-2">👥 توسيع شبكة الشركاء</strong>
+                        زيادة عدد الشركاء توسع الوصول، لكن:
+                        <ul className="mt-2 space-y-1 mr-4 list-disc">
+                          <li>10 شركاء فاعلين أفضل من 50 غير فاعلين</li>
+                          <li>وفّر أدوات تسويقية جاهزة للشركاء</li>
+                          <li>أنشئ برنامج حوافز للأداء العالي</li>
+                          <li>تتبع أداء كل شريك بشكل منفصل</li>
+                        </ul>
+                      </>
+                    )}
+                    {whatIfVariable === 'avgReferralsPerPartner' && (
+                      <>
+                        <strong className="block mb-2">🔗 تحسين أداء الشركاء</strong>
+                        تحسين معدل الإحالات أكثر فعالية من زيادة العدد:
+                        <ul className="mt-2 space-y-1 mr-4 list-disc">
+                          <li>قدّم قوالب محتوى جاهزة</li>
+                          <li>أنشئ منافسات بين الشركاء</li>
+                          <li>شارك قصص نجاح ملهمة</li>
+                          <li>وفّر روابط تتبع ذكية</li>
+                        </ul>
+                      </>
+                    )}
+                    {whatIfVariable === 'firstMonthCommission' && (
+                      <>
+                        <strong className="block mb-2">💵 توازن العمولات</strong>
+                        العمولة العالية تجذب الشركاء لكنها تقلل الأرباح:
+                        <ul className="mt-2 space-y-1 mr-4 list-disc">
+                          <li>اختبر عمولات متدرجة حسب الأداء</li>
+                          <li>قدّم مكافآت للمراحل milestones</li>
+                          <li>اربط العمولة بجودة الإحالات</li>
+                          <li>حافظ على هامش ربح لا يقل عن 30%</li>
+                        </ul>
+                      </>
+                    )}
+                    {whatIfVariable === 'upfrontFeePerPartner' && (
+                      <>
+                        <strong className="block mb-2">🎁 الرسوم الأولية</strong>
+                        الرسوم الثابتة تزيد المخاطرة:
+                        <ul className="mt-2 space-y-1 mr-4 list-disc">
+                          <li>فكّر في نموذج "عمولة فقط" للشركاء الجدد</li>
+                          <li>اربط الرسوم الأولية بعدد الإحالات المضمونة</li>
+                          <li>قدّم خصماً للرسوم مع عمولة أعلى</li>
+                          <li>اختبر بدون رسوم أولية تماماً</li>
+                        </ul>
+                      </>
+                    )}
+                    {!['churnRate', 'avgSubscriptionPrice', 'partnerCount', 'avgReferralsPerPartner', 'firstMonthCommission', 'upfrontFeePerPartner'].includes(whatIfVariable) && (
+                      <>
+                        <strong className="block mb-2">📊 تحسين المتغير</strong>
+                        هذا المتغير يؤثر على نتائجك:
+                        <ul className="mt-2 space-y-1 mr-4 list-disc">
+                          <li>راقب تأثيره باستمرار</li>
+                          <li>اضبطه بناءً على الأداء الفعلي</li>
+                          <li>قارنه مع معايير الصناعة</li>
+                          <li>اختبر سيناريوهات مختلفة</li>
+                        </ul>
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Impact Summary */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <ScatterChart className="w-5 h-5 text-indigo-600" />
+                ملخص التأثير
               </h4>
-              <p className="text-amber-700 text-sm">
-                {whatIfVariable === 'churnRate' && 'معدل الإلغاء من أهم العوامل! تخفيضه 5% يمكن أن يضاعف الأرباح. ركّز على تحسين تجربة المستخدم والمحتوى.'}
-                {whatIfVariable === 'avgSubscriptionPrice' && 'السعر يؤثر مباشرة على الإيرادات. اختبر أسعاراً مختلفة مع شرائح عملاء مختلفة قبل التعميم.'}
-                {whatIfVariable === 'partnerCount' && 'زيادة الشركاء توسع الوصول، لكن تأكد من جودة كل شريك. 10 شركاء فاعلين أفضل من 50 غير فاعلين.'}
-                {whatIfVariable === 'avgReferralsPerPartner' && 'تحسين معدل الإحالات لكل شريك أكثر فعالية من زيادة عدد الشركاء. وفّر أدوات تسويقية أفضل للشركاء.'}
-                {whatIfVariable === 'firstMonthCommission' && 'العمولة العالية تجذب الشركاء لكنها تقلل الأرباح. ابحث عن توازن يحفّز الشركاء ويحافظ على الهامش.'}
-                {whatIfVariable === 'upfrontFeePerPartner' && 'الرسوم الأولية الثابتة تزيد المخاطرة. فكّر في نموذج "عمولة فقط" للشركاء الجدد.'}
-                {!['churnRate', 'avgSubscriptionPrice', 'partnerCount', 'avgReferralsPerPartner', 'firstMonthCommission', 'upfrontFeePerPartner'].includes(whatIfVariable) && 'هذا المتغير يؤثر على النتائج. راقب تأثيره باستمرار واضبطه بناءً على الأداء الفعلي.'}
-              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-4 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-600">نطاق الربحية</span>
+                    <TrendingUp className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-indigo-600">
+                    {formatCurrency(whatIfInsights.best.netProfit12Months - whatIfInsights.worst.netProfit12Months)}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">الفرق بين أفضل وأسوأ سيناريو</p>
+                </div>
+                <div className="bg-slate-50 p-4 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-600">نسبة التحسين الممكنة</span>
+                    <Zap className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {whatIfInsights.improvementPercent > 0 ? '+' : ''}{whatIfInsights.improvementPercent.toFixed(1)}%
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">زيادة الربح بالوصول للقيمة المثلى</p>
+                </div>
+              </div>
             </div>
           </section>
         )}
@@ -666,10 +935,7 @@ const App: React.FC = () => {
           <section className="lg:col-span-12">
             <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 max-w-2xl mx-auto">
               <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                <Settings className="w-6 h-6 text-indigo-600" />
                 إدارة الإعدادات
               </h2>
 
@@ -678,13 +944,14 @@ const App: React.FC = () => {
                   <p className="text-sm text-slate-600 mb-2">حالة الحفظ</p>
                   {settingsSaved ? (
                     <p className="text-emerald-600 font-semibold flex items-center gap-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <CheckCircle2 className="w-5 h-5" />
                       تم حفظ الإعدادات محلياً
                     </p>
                   ) : (
-                    <p className="text-amber-600 font-semibold">⚠️ لديك تغييرات غير محفوظة</p>
+                    <p className="text-amber-600 font-semibold flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      لديك تغييرات غير محفوظة
+                    </p>
                   )}
                 </div>
 
@@ -693,25 +960,24 @@ const App: React.FC = () => {
                     onClick={saveSettings}
                     className="flex-1 px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                    </svg>
+                    <Save className="w-5 h-5" />
                     حفظ الإعدادات
                   </button>
                   <button
                     onClick={resetSettings}
                     className="flex-1 px-6 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                    <RotateCcw className="w-5 h-5" />
                     إعادة تعيين
                   </button>
                 </div>
 
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-amber-800">
-                    <strong>ملاحظة:</strong> يتم حفظ الإعدادات في متصفحك فقط (localStorage). لن تضيع البيانات عند إغلاق الصفحة، ولكن مسح بيانات المتصفح سيحذفها.
+                  <p className="text-sm text-amber-800 flex items-start gap-2">
+                    <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                    <span>
+                      <strong>ملاحظة:</strong> يتم حفظ الإعدادات في متصفحك فقط (localStorage). لن تضيع البيانات عند إغلاق الصفحة، ولكن مسح بيانات المتصفح سيحذفها.
+                    </span>
                   </p>
                 </div>
               </div>
@@ -735,7 +1001,10 @@ const App: React.FC = () => {
               <span className="text-sm font-bold text-slate-700">{metrics.paybackPeriod.toFixed(1)}m</span>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 italic">أداة محاكاة - رادار المستثمر © 2025</p>
+          <p className="text-[10px] text-slate-400 italic flex items-center gap-1">
+            <TrendingUp className="w-3 h-3" />
+            أداة محاكاة - رادار المستثمر © 2025
+          </p>
         </div>
       </footer>
     </div>
