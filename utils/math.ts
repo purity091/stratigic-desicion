@@ -1,11 +1,28 @@
 
-import { SimulationInputs, SimulationMetrics, CostItem } from '../types';
+import { SimulationInputs, SimulationMetrics, CostItem, CapitalCostItem } from '../types';
 
 export const calculateMonthlyFixedCosts = (costItems: CostItem[]): number => {
   return costItems.reduce((sum, item) => sum + item.amount, 0);
 };
 
-export const calculateMetrics = (inputs: SimulationInputs, monthlyFixedCosts: number = 0): SimulationMetrics => {
+export const calculateMonthlyDepreciation = (capitalCosts: CapitalCostItem[]): number => {
+  return capitalCosts.reduce((sum, item) => {
+    const depreciableAmount = item.amount - item.salvageValue;
+    const monthlyDepreciation = depreciableAmount / item.usefulLife;
+    return sum + monthlyDepreciation;
+  }, 0);
+};
+
+export const calculateTotalCapitalInvestment = (capitalCosts: CapitalCostItem[]): number => {
+  return capitalCosts.reduce((sum, item) => sum + item.amount, 0);
+};
+
+export const calculateMetrics = (
+  inputs: SimulationInputs,
+  monthlyFixedCosts: number = 0,
+  monthlyDepreciation: number = 0,
+  totalCapitalInvestment: number = 0
+): SimulationMetrics => {
   const {
     firstMonthCommission,
     recurringCommission,
@@ -63,10 +80,11 @@ export const calculateMetrics = (inputs: SimulationInputs, monthlyFixedCosts: nu
   const expectedProfit6Months = (monthlyProfitPerUser * 6 * totalSubscribers) - (totalSubscribers * firstMonthCommVal) - totalUpfrontFees;
   const expectedProfit12Months = (monthlyProfitPerUser * 12 * totalSubscribers) - (totalSubscribers * firstMonthCommVal) - totalUpfrontFees;
 
-  // Net profit after fixed costs
-  const netProfit3Months = expectedProfit3Months - (monthlyFixedCosts * 3);
-  const netProfit6Months = expectedProfit6Months - (monthlyFixedCosts * 6);
-  const netProfit12Months = expectedProfit12Months - (monthlyFixedCosts * 12);
+  // Net profit after fixed costs AND depreciation
+  const totalMonthlyCosts = monthlyFixedCosts + monthlyDepreciation;
+  const netProfit3Months = expectedProfit3Months - (totalMonthlyCosts * 3);
+  const netProfit6Months = expectedProfit6Months - (totalMonthlyCosts * 6);
+  const netProfit12Months = expectedProfit12Months - (totalMonthlyCosts * 12);
 
   // Break Even
   const fixedCosts = 50000;
@@ -85,6 +103,8 @@ export const calculateMetrics = (inputs: SimulationInputs, monthlyFixedCosts: nu
     totalSubscribers,
     totalRevenue: totalRevenueLife * totalSubscribers,
     totalMonthlyFixedCosts: monthlyFixedCosts,
+    totalMonthlyDepreciation: monthlyDepreciation,
+    totalCapitalInvestment: totalCapitalInvestment,
     netProfit3Months,
     netProfit6Months,
     netProfit12Months

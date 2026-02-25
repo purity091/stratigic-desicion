@@ -38,8 +38,19 @@ export interface CostItem {
   type: 'fixed' | 'variable';
 }
 
+export interface CapitalCostItem {
+  id: string;
+  name: string;
+  amount: number;
+  usefulLife: number; // in months
+  purchaseDate: string;
+  salvageValue: number;
+  category: 'equipment' | 'furniture' | 'technology' | 'infrastructure' | 'other';
+}
+
 export interface Settings {
   monthlyFixedCosts: CostItem[];
+  capitalCosts: CapitalCostItem[];
 }
 
 export interface SimulationMetrics {
@@ -55,6 +66,8 @@ export interface SimulationMetrics {
   totalSubscribers: number;
   totalRevenue: number;
   totalMonthlyFixedCosts: number;
+  totalMonthlyDepreciation: number;
+  totalCapitalInvestment: number;
   netProfit3Months: number;
   netProfit6Months: number;
   netProfit12Months: number;

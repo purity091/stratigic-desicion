@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ScenarioType, SimulationInputs, RiskIndicator, CostItem } from '../types';
+import { ScenarioType, SimulationInputs, RiskIndicator, CostItem, CapitalCostItem } from '../types';
 import { DEFAULT_INPUTS } from '../constants';
-import { calculateMetrics, formatCurrency, formatPercent } from '../utils/math';
+import { calculateMetrics, calculateMonthlyDepreciation, calculateTotalCapitalInvestment, formatCurrency, formatPercent } from '../utils/math';
 
 const STORAGE_KEY_SETTINGS = 'simulator_settings';
 const STORAGE_KEY_COSTS = 'simulator_costs';
+const STORAGE_KEY_CAPITAL = 'simulator_capital_costs';
 
 const defaultCostItems: CostItem[] = [
   { id: '1', name: 'إيجار المكتب', amount: 5000, type: 'fixed' },
@@ -13,10 +14,17 @@ const defaultCostItems: CostItem[] = [
   { id: '4', name: 'برامج وخدمات سحابية', amount: 1000, type: 'fixed' },
 ];
 
+const defaultCapitalCosts: CapitalCostItem[] = [
+  { id: 'c1', name: 'أجهزة لابتوب', amount: 15000, usefulLife: 36, purchaseDate: '2025-01-01', salvageValue: 3000, category: 'technology' },
+  { id: 'c2', name: 'ألواح طاقة شمسية', amount: 25000, usefulLife: 240, purchaseDate: '2025-01-01', salvageValue: 5000, category: 'infrastructure' },
+  { id: 'c3', name: 'مكتب وكراسي', amount: 8000, usefulLife: 60, purchaseDate: '2025-01-01', salvageValue: 1000, category: 'furniture' },
+];
+
 export const useSimulator = () => {
   const [activeScenario, setActiveScenario] = useState<ScenarioType>(ScenarioType.REALISTIC);
   const [inputs, setInputs] = useState<SimulationInputs>(DEFAULT_INPUTS[ScenarioType.REALISTIC]);
   const [costItems, setCostItems] = useState<CostItem[]>(defaultCostItems);
+  const [capitalCosts, setCapitalCosts] = useState<CapitalCostItem[]>(defaultCapitalCosts);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
   // Load settings and costs from localStorage on mount
@@ -24,6 +32,7 @@ export const useSimulator = () => {
     try {
       const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
       const savedCosts = localStorage.getItem(STORAGE_KEY_COSTS);
+      const savedCapital = localStorage.getItem(STORAGE_KEY_CAPITAL);
       
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
@@ -36,6 +45,13 @@ export const useSimulator = () => {
         const parsedCosts = JSON.parse(savedCosts);
         if (Array.isArray(parsedCosts) && parsedCosts.length > 0) {
           setCostItems(parsedCosts);
+        }
+      }
+      
+      if (savedCapital) {
+        const parsedCapital = JSON.parse(savedCapital);
+        if (Array.isArray(parsedCapital) && parsedCapital.length > 0) {
+          setCapitalCosts(parsedCapital);
         }
       }
     } catch (e) {
@@ -70,9 +86,11 @@ export const useSimulator = () => {
     try {
       localStorage.removeItem(STORAGE_KEY_SETTINGS);
       localStorage.removeItem(STORAGE_KEY_COSTS);
+      localStorage.removeItem(STORAGE_KEY_CAPITAL);
       setInputs(DEFAULT_INPUTS[ScenarioType.REALISTIC]);
       setActiveScenario(ScenarioType.REALISTIC);
       setCostItems(defaultCostItems);
+      setCapitalCosts(defaultCapitalCosts);
       setSettingsSaved(false);
     } catch (e) {
       console.error('Failed to reset settings', e);
@@ -105,11 +123,49 @@ export const useSimulator = () => {
     localStorage.setItem(STORAGE_KEY_COSTS, JSON.stringify(updated));
   };
 
+  // Capital Costs management
+  const addCapitalCost = (item: Omit<CapitalCostItem, 'id'>) => {
+    const newItem: CapitalCostItem = {
+      ...item,
+      id: Date.now().toString()
+    };
+    const updated = [...capitalCosts, newItem];
+    setCapitalCosts(updated);
+    localStorage.setItem(STORAGE_KEY_CAPITAL, JSON.stringify(updated));
+  };
+
+  const updateCapitalCost = (id: string, updates: Partial<CapitalCostItem>) => {
+    const updated = capitalCosts.map(item =>
+      item.id === id ? { ...item, ...updates } : item
+    );
+    setCapitalCosts(updated);
+    localStorage.setItem(STORAGE_KEY_CAPITAL, JSON.stringify(updated));
+  };
+
+  const deleteCapitalCost = (id: string) => {
+    const updated = capitalCosts.filter(item => item.id !== id);
+    setCapitalCosts(updated);
+    localStorage.setItem(STORAGE_KEY_CAPITAL, JSON.stringify(updated));
+  };
+
   const totalMonthlyFixedCosts = useMemo(() => {
     return costItems.reduce((sum, item) => item.type === 'fixed' ? sum + item.amount : sum, 0);
   }, [costItems]);
 
-  const metrics = useMemo(() => calculateMetrics(inputs, totalMonthlyFixedCosts), [inputs, totalMonthlyFixedCosts]);
+  const totalMonthlyDepreciation = useMemo(() => {
+    return calculateMonthlyDepreciation(capitalCosts);
+  }, [capitalCosts]);
+
+  const totalCapitalInvestment = useMemo(() => {
+    return calculateTotalCapitalInvestment(capitalCosts);
+  }, [capitalCosts]);
+
+  const metrics = useMemo(() => calculateMetrics(
+    inputs,
+    totalMonthlyFixedCosts,
+    totalMonthlyDepreciation,
+    totalCapitalInvestment
+  ), [inputs, totalMonthlyFixedCosts, totalMonthlyDepreciation, totalCapitalInvestment]);
 
   const strategicAdvice = useMemo(() => {
     const advices: Array<{ title: string; content: string; type: 'info' | 'warning' | 'positive' }> = [];
@@ -212,6 +268,13 @@ export const useSimulator = () => {
     addCostItem,
     updateCostItem,
     deleteCostItem,
-    totalMonthlyFixedCosts
+    totalMonthlyFixedCosts,
+    // Capital Costs
+    capitalCosts,
+    addCapitalCost,
+    updateCapitalCost,
+    deleteCapitalCost,
+    totalMonthlyDepreciation,
+    totalCapitalInvestment
   };
 };

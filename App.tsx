@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ScenarioType, SimulationInputs } from './types';
+import { ScenarioType, SimulationInputs, CapitalCostItem } from './types';
 import { formatCurrency } from './utils/math';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -34,6 +34,13 @@ const App: React.FC = () => {
   const [whatIfBaseValue, setWhatIfBaseValue] = useState(10);
   const [whatIfRange, setWhatIfRange] = useState({ min: 5, max: 30, step: 5 });
 
+  // Capital Cost form state
+  const [newCapitalName, setNewCapitalName] = useState('');
+  const [newCapitalAmount, setNewCapitalAmount] = useState(0);
+  const [newCapitalLife, setNewCapitalLife] = useState(36);
+  const [newCapitalSalvage, setNewCapitalSalvage] = useState(0);
+  const [newCapitalCategory, setNewCapitalCategory] = useState<CapitalCostItem['category']>('technology');
+
   const {
     activeScenario,
     inputs,
@@ -50,7 +57,14 @@ const App: React.FC = () => {
     addCostItem,
     updateCostItem,
     deleteCostItem,
-    totalMonthlyFixedCosts
+    totalMonthlyFixedCosts,
+    // Capital Costs
+    capitalCosts,
+    addCapitalCost,
+    updateCapitalCost,
+    deleteCapitalCost,
+    totalMonthlyDepreciation,
+    totalCapitalInvestment
   } = useSimulator();
 
   const handleAddCost = () => {
@@ -58,6 +72,23 @@ const App: React.FC = () => {
       addCostItem(newCostName, newCostAmount, 'fixed');
       setNewCostName('');
       setNewCostAmount(0);
+    }
+  };
+
+  const handleAddCapitalCost = () => {
+    if (newCapitalName.trim() && newCapitalAmount > 0) {
+      addCapitalCost({
+        name: newCapitalName,
+        amount: newCapitalAmount,
+        usefulLife: newCapitalLife,
+        purchaseDate: new Date().toISOString().split('T')[0],
+        salvageValue: newCapitalSalvage,
+        category: newCapitalCategory
+      });
+      setNewCapitalName('');
+      setNewCapitalAmount(0);
+      setNewCapitalLife(36);
+      setNewCapitalSalvage(0);
     }
   };
 
@@ -517,13 +548,186 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Capital Costs Section */}
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-6 rounded-2xl border-2 border-dashed border-slate-300">
+              <h2 className="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <PieChart className="w-6 h-6 text-indigo-600" />
+                الأصول والتكاليف الرأسمالية (CapEx)
+              </h2>
+              <p className="text-sm text-slate-600 mb-6">
+                الأصول طويلة الأجل مثل الأجهزة والمعدات. يتم احتساب استهلاكها الشهري تلقائياً.
+              </p>
+
+              {/* Add Capital Cost Form */}
+              <div className="bg-white p-6 rounded-xl border border-slate-200 mb-6">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  إضافة أصل جديد
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div className="lg:col-span-2">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">اسم الأصل</label>
+                    <input
+                      type="text"
+                      value={newCapitalName}
+                      onChange={(e) => setNewCapitalName(e.target.value)}
+                      placeholder="مثال: أجهزة لابتوب، ألواح شمسية"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">القيمة (ر.س)</label>
+                    <input
+                      type="number"
+                      value={newCapitalAmount}
+                      onChange={(e) => setNewCapitalAmount(Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">العمر الافتراضي (شهر)</label>
+                    <input
+                      type="number"
+                      value={newCapitalLife}
+                      onChange={(e) => setNewCapitalLife(Number(e.target.value))}
+                      placeholder="36"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">الفئة</label>
+                    <select
+                      value={newCapitalCategory}
+                      onChange={(e) => setNewCapitalCategory(e.target.value as CapitalCostItem['category'])}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                    >
+                      <option value="technology">تقنية وأجهزة</option>
+                      <option value="equipment">معدات</option>
+                      <option value="furniture">أثاث</option>
+                      <option value="infrastructure">بنية تحتية</option>
+                      <option value="other">أخرى</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">القيمة المتبقية (ر.س)</label>
+                    <input
+                      type="number"
+                      value={newCapitalSalvage}
+                      onChange={(e) => setNewCapitalSalvage(Number(e.target.value))}
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={handleAddCapitalCost}
+                      className="w-full px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      إضافة الأصل
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Capital Costs List */}
+              <div className="bg-white p-6 rounded-xl border border-slate-200">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <PieChart className="w-4 h-4" />
+                    قائمة الأصول
+                  </h3>
+                  <div className="text-left">
+                    <p className="text-xs text-slate-500">إجمالي الاستثمار الرأسمالي</p>
+                    <p className="text-lg font-bold text-indigo-600">{formatCurrency(totalCapitalInvestment)}</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-right py-3 px-2 font-medium text-slate-600">الأصل</th>
+                        <th className="text-right py-3 px-2 font-medium text-slate-600">الفئة</th>
+                        <th className="text-right py-3 px-2 font-medium text-slate-600">القيمة</th>
+                        <th className="text-right py-3 px-2 font-medium text-slate-600">العمر</th>
+                        <th className="text-right py-3 px-2 font-medium text-slate-600">القيمة المتبقية</th>
+                        <th className="text-right py-3 px-2 font-medium text-slate-600">الاستهلاك الشهري</th>
+                        <th className="text-right py-3 px-2 font-medium text-slate-600">إجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {capitalCosts.map((item) => {
+                        const monthlyDep = (item.amount - item.salvageValue) / item.usefulLife;
+                        const categoryLabels: Record<string, string> = {
+                          technology: 'تقنية',
+                          equipment: 'معدات',
+                          furniture: 'أثاث',
+                          infrastructure: 'بنية تحتية',
+                          other: 'أخرى'
+                        };
+                        return (
+                          <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="py-3 px-2 font-semibold text-slate-800">{item.name}</td>
+                            <td className="py-3 px-2">
+                              <span className="text-xs bg-slate-100 text-slate-700 px-2 py-1 rounded">
+                                {categoryLabels[item.category]}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-slate-700">{formatCurrency(item.amount)}</td>
+                            <td className="py-3 px-2 text-slate-600">{item.usefulLife} شهر</td>
+                            <td className="py-3 px-2 text-slate-600">{formatCurrency(item.salvageValue)}</td>
+                            <td className="py-3 px-2 font-bold text-indigo-600">{formatCurrency(monthlyDep)}</td>
+                            <td className="py-3 px-2">
+                              <button
+                                onClick={() => deleteCapitalCost(item.id)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {capitalCosts.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-500 flex items-center justify-center gap-2">
+                            <Info className="w-5 h-5" />
+                            لا توجد أصول مضافة
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white p-6 rounded-2xl shadow-lg">
                 <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  التكاليف السنوية
+                  <Wallet className="w-4 h-4" />
+                  التكاليف الشهرية
                 </p>
-                <p className="text-3xl font-bold">{formatCurrency(totalMonthlyFixedCosts * 12)}</p>
+                <p className="text-3xl font-bold">{formatCurrency(totalMonthlyFixedCosts)}</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
+                <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
+                  <PieChart className="w-4 h-4" />
+                  الاستهلاك الشهري
+                </p>
+                <p className="text-3xl font-bold">{formatCurrency(totalMonthlyDepreciation)}</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-6 rounded-2xl shadow-lg">
+                <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  إجمالي الاستثمار
+                </p>
+                <p className="text-3xl font-bold">{formatCurrency(totalCapitalInvestment)}</p>
               </div>
               <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-6 rounded-2xl shadow-lg">
                 <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
@@ -532,12 +736,30 @@ const App: React.FC = () => {
                 </p>
                 <p className="text-3xl font-bold">{formatCurrency(metrics.netProfit12Months)}</p>
               </div>
-              <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-6 rounded-2xl shadow-lg">
-                <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
-                  <Target className="w-4 h-4" />
-                  نقطة التعادل
-                </p>
-                <p className="text-3xl font-bold">{formatCurrency(totalMonthlyFixedCosts / (metrics.grossMarginPercentage / 100) || 0)}</p>
+            </div>
+
+            {/* Annual Cost Breakdown */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-indigo-600" />
+                هيكل التكاليف السنوي
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center p-6 bg-slate-50 rounded-xl">
+                  <p className="text-sm text-slate-600 mb-2">التكاليف التشغيلية السنوية</p>
+                  <p className="text-3xl font-bold text-indigo-600">{formatCurrency(totalMonthlyFixedCosts * 12)}</p>
+                  <p className="text-xs text-slate-500 mt-2">إيجار، رواتب، خدمات</p>
+                </div>
+                <div className="text-center p-6 bg-slate-50 rounded-xl">
+                  <p className="text-sm text-slate-600 mb-2">الاستهلاك السنوي</p>
+                  <p className="text-3xl font-bold text-purple-600">{formatCurrency(totalMonthlyDepreciation * 12)}</p>
+                  <p className="text-xs text-slate-500 mt-2">استهلاك الأصول الرأسمالية</p>
+                </div>
+                <div className="text-center p-6 bg-slate-50 rounded-xl">
+                  <p className="text-sm text-slate-600 mb-2">إجمالي التكاليف السنوية</p>
+                  <p className="text-3xl font-bold text-amber-600">{formatCurrency((totalMonthlyFixedCosts + totalMonthlyDepreciation) * 12)}</p>
+                  <p className="text-xs text-slate-500 mt-2">التكاليف الكاملة</p>
+                </div>
               </div>
             </div>
           </section>
