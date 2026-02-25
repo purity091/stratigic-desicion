@@ -1,63 +1,40 @@
-const CACHE_NAME = 'radar-investor-v3';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+// SELF-DESTRUCTING SERVICE WORKER
+// This SW clears all caches and unregisters itself
+// to fix the stale cache problem causing React Error #310
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
-  );
+  // Skip waiting to activate immediately
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
+    (async () => {
+      // 1. Clear ALL caches
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map((name) => {
+          console.log('[SW] Deleting cache:', name);
+          return caches.delete(name);
         })
       );
-    })
+
+      // 2. Unregister this service worker
+      const registration = await self.registration;
+      await registration.unregister();
+      console.log('[SW] Service worker unregistered');
+
+      // 3. Force all clients to reload with fresh content
+      const clients = await self.clients.matchAll({ type: 'window' });
+      clients.forEach((client) => {
+        client.navigate(client.url);
+      });
+    })()
   );
-  self.clients.claim();
 });
 
+// Do NOT intercept any fetch requests - let everything go to network
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  // Skip non-HTTP requests
-  if (!url.protocol.startsWith('http')) return;
-
-  // Skip cross-origin requests entirely (fonts, CDNs, etc.)
-  // Let the browser handle them natively without SW interference
-  if (url.origin !== self.location.origin) return;
-
-  // For same-origin requests: network-first, fallback to cache
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses
-        if (response && response.status === 200) {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Offline fallback: try cache
-        return caches.match(event.request).then((cached) => {
-          // Return cached response or a simple offline fallback
-          return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
-        });
-      })
-  );
+  // Pass through - do nothing
+  return;
 });

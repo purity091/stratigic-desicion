@@ -13,7 +13,8 @@
   <meta name="description" content="أداة محاكاة لاتخاذ القرارات الاستراتيجية لبرنامج الشركاء" />
   <meta name="format-detection" content="telephone=no" />
   <title>محاكي القرارات الاستراتيجية | رادار المستثمر</title>
-  <link rel="manifest" href="/manifest.json" />
+  <!-- PWA disabled temporarily to fix caching issues -->
+  <!-- <link rel="manifest" href="/manifest.json" /> -->
   <link rel="apple-touch-icon" href="/icon-192.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -92,29 +93,34 @@
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
   <script>
-    // Clear ALL old caches and force-update service worker
+    // NUCLEAR OPTION: Remove ALL service workers and clear ALL caches
+    // This fixes the stale cache loop causing React Error #310
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
+      (async () => {
         try {
-          // 1. Clear ALL old caches first
+          // 1. Clear ALL caches immediately (don't wait for load)
           const cacheNames = await caches.keys();
-          await Promise.all(
-            cacheNames.map(name => {
-              console.log('Clearing old cache:', name);
-              return caches.delete(name);
-            })
-          );
+          await Promise.all(cacheNames.map(n => caches.delete(n)));
+          if (cacheNames.length > 0) console.log('[Fix] Cleared', cacheNames.length, 'old caches');
 
-          // 2. Register (or re-register) SW with update check
-          const registration = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
-          console.log('SW registered:', registration.scope);
+          // 2. Unregister ALL service workers
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          let hadSW = false;
+          for (const reg of registrations) {
+            await reg.unregister();
+            hadSW = true;
+            console.log('[Fix] Unregistered SW:', reg.scope);
+          }
 
-          // 3. Force immediate update check
-          registration.update();
-        } catch (error) {
-          console.log('SW setup error:', error);
+          // 3. If we had an old SW controlling this page, force reload to get fresh content
+          if (hadSW && navigator.serviceWorker.controller) {
+            console.log('[Fix] Old SW was active, reloading for fresh content...');
+            window.location.reload();
+          }
+        } catch (e) {
+          console.log('[Fix] SW cleanup error:', e);
         }
-      });
+      })();
     }
   </script>
 </body>
