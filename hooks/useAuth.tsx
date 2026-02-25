@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const STORAGE_KEY_AUTH = 'simulator_auth';
 const DEFAULT_USERNAME = 'admin';
@@ -15,16 +15,15 @@ interface AuthContextType extends AuthState {
   changePassword: (newPassword: string) => boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     username: null
   });
 
   useEffect(() => {
-    // Check for existing session
     try {
       const savedAuth = localStorage.getItem(STORAGE_KEY_AUTH);
       if (savedAuth) {
@@ -39,7 +38,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // Simple authentication (in real app, this would be server-side)
     const storedPassword = localStorage.getItem('simulator_password') || DEFAULT_PASSWORD;
     
     if (username === DEFAULT_USERNAME && password === storedPassword) {
@@ -73,12 +71,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    React.createElement(AuthContext.Provider, { value: { ...authState, login, logout, changePassword } }, children)
+    <AuthContext.Provider value={{ ...authState, login, logout, changePassword }}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
+  const context = React.useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }

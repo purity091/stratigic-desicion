@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 import { useSimulator } from './hooks/useSimulator';
-import { useAuth } from './hooks/useAuth';
+import { useAuth } from './hooks/useAuth.tsx';
 import { LoginScreen } from './components/LoginScreen/LoginScreen';
 import { InputGroup } from './components/InputGroup/InputGroup';
 import { RangeInput } from './components/RangeInput/RangeInput';
@@ -48,6 +48,24 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = () => {
     setShowLogin(false);
+  };
+
+  const getTabLabel = (tab: TabType) => {
+    switch (tab) {
+      case 'dashboard': return 'الرئيسية';
+      case 'costs': return 'التكاليف';
+      case 'whatif': return 'ماذا لو';
+      case 'settings': return 'الإعدادات';
+    }
+  };
+
+  const getTabIcon = (tab: TabType) => {
+    switch (tab) {
+      case 'dashboard': return LayoutDashboard;
+      case 'costs': return Wallet;
+      case 'whatif': return TrendingUp;
+      case 'settings': return Settings;
+    }
   };
 
   if (showLogin) {
@@ -1137,7 +1155,7 @@ const App: React.FC = () => {
                           <li>10 شركاء فاعلين أفضل من 50 غير فاعلين</li>
                           <li>وفّر أدوات تسويقية جاهزة للشركاء</li>
                           <li>أنشئ برنامج حوافز للأداء العالي</li>
-                          <li>تتبع أداء كل شريك بشكل منفصل</li>
+                          <li>تتبع أداء ك�� شريك بشكل منفصل</li>
                         </ul>
                       </>
                     )}
@@ -1339,7 +1357,41 @@ const App: React.FC = () => {
 
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-3 px-6 z-50">
+      {/* Bottom Navigation Bar - Mobile Apps Style */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50 safe-area-bottom">
+        <div className="max-w-lg mx-auto flex justify-around items-center">
+          {(['dashboard', 'costs', 'whatif', 'settings'] as TabType[]).map((tab) => {
+            const Icon = getTabIcon(tab);
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 flex flex-col items-center justify-center py-3 px-2 transition-all ${
+                  isActive
+                    ? 'text-indigo-600 bg-indigo-50'
+                    : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <div className={`relative ${isActive ? 'scale-110' : 'scale-100'} transition-transform`}>
+                  <Icon className={`w-6 h-6 ${isActive ? 'fill-indigo-100' : ''}`} />
+                  {isActive && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-indigo-600 rounded-full"></span>
+                  )}
+                </div>
+                <span className={`text-[10px] font-medium mt-1 ${isActive ? 'font-bold' : ''}`}>
+                  {getTabLabel(tab)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {/* Safe area for notched devices */}
+        <div className="h-safe-area-inset-bottom bg-white"></div>
+      </nav>
+
+      {/* Hide footer on mobile, show only on desktop */}
+      <footer className="hidden lg:block fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 py-3 px-6 z-40">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth.tsx';
 import { Lock, User, LogIn, AlertTriangle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 interface LoginScreenProps {
