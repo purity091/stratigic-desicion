@@ -21,12 +21,12 @@ const App: React.FC = () => {
   const [newCostName, setNewCostName] = useState('');
   const [newCostAmount, setNewCostAmount] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
+
   // What-if Analysis state
   const [whatIfVariable, setWhatIfVariable] = useState<keyof SimulationInputs>('churnRate');
-  const [whatIfBaseValue, setWhatIfBaseValue] = useState(inputs.churnRate);
+  const [whatIfBaseValue, setWhatIfBaseValue] = useState(10);
   const [whatIfRange, setWhatIfRange] = useState({ min: 5, max: 30, step: 5 });
-  
+
   const {
     activeScenario,
     inputs,
