@@ -10,10 +10,12 @@ import {
   Plus, Trash2, Save, RotateCcw, CheckCircle2, AlertTriangle, Info,
   ArrowUpRight, ArrowDownRight, DollarSign, Users, Percent, Calendar,
   Lightbulb, BarChart3, Activity, Target, Zap, TrendingDown, Shield,
-  PieChart, LineChart as LineChartIcon, ScatterChart, MoveRight
+  PieChart, LineChart as LineChartIcon, ScatterChart, MoveRight, LogOut, User
 } from 'lucide-react';
 
 import { useSimulator } from './hooks/useSimulator';
+import { useAuth } from './hooks/useAuth';
+import { LoginScreen } from './components/LoginScreen/LoginScreen';
 import { InputGroup } from './components/InputGroup/InputGroup';
 import { RangeInput } from './components/RangeInput/RangeInput';
 import { MetricCard } from './components/MetricCard/MetricCard';
@@ -24,6 +26,9 @@ import { calculateMetrics } from './utils/math';
 type TabType = 'dashboard' | 'costs' | 'settings' | 'whatif';
 
 const App: React.FC = () => {
+  const { isAuthenticated, logout, username } = useAuth();
+  const [showLogin, setShowLogin] = useState(!isAuthenticated);
+
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [newCostName, setNewCostName] = useState('');
   const [newCostAmount, setNewCostAmount] = useState(0);
@@ -40,6 +45,14 @@ const App: React.FC = () => {
   const [newCapitalLife, setNewCapitalLife] = useState(36);
   const [newCapitalSalvage, setNewCapitalSalvage] = useState(0);
   const [newCapitalCategory, setNewCapitalCategory] = useState<CapitalCostItem['category']>('technology');
+
+  const handleLoginSuccess = () => {
+    setShowLogin(false);
+  };
+
+  if (showLogin) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
 
   const {
     activeScenario,
@@ -246,6 +259,22 @@ const App: React.FC = () => {
               <div className="hidden lg:flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-xl backdrop-blur-sm">
                 <span className="text-xs text-slate-400">سعر الصرف:</span>
                 <span className="text-xs font-bold text-white">1 USD = {exchangeRate} SAR</span>
+              </div>
+              {/* User Menu */}
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-xl backdrop-blur-sm">
+                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-xs text-white font-semibold">{username || 'مستخدم'}</span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="p-2.5 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-colors"
+                  title="تسجيل الخروج"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
               </div>
             </div>
             
