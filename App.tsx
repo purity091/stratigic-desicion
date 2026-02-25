@@ -68,10 +68,7 @@ const App: React.FC = () => {
     }
   };
 
-  if (showLogin) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
-  }
-
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURN
   const {
     activeScenario,
     inputs,
@@ -108,48 +105,6 @@ const App: React.FC = () => {
 
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      importData(file)
-        .then(() => {
-          setImportSuccess(true);
-          setImportError(null);
-          setTimeout(() => setImportSuccess(false), 3000);
-        })
-        .catch((err) => {
-          setImportError('فشل استيراد الملف. تأكد من صحة التنسيق.');
-          console.error(err);
-        });
-      e.target.value = '';
-    }
-  };
-
-  const handleAddCost = () => {
-    if (newCostName.trim() && newCostAmount > 0) {
-      addCostItem(newCostName, newCostAmount, 'fixed');
-      setNewCostName('');
-      setNewCostAmount(0);
-    }
-  };
-
-  const handleAddCapitalCost = () => {
-    if (newCapitalName.trim() && newCapitalAmount > 0) {
-      addCapitalCost({
-        name: newCapitalName,
-        amount: newCapitalAmount,
-        usefulLife: newCapitalLife,
-        purchaseDate: new Date().toISOString().split('T')[0],
-        salvageValue: newCapitalSalvage,
-        category: newCapitalCategory
-      });
-      setNewCapitalName('');
-      setNewCapitalAmount(0);
-      setNewCapitalLife(36);
-      setNewCapitalSalvage(0);
-    }
-  };
 
   // Update what-if base value when variable changes
   useEffect(() => {
@@ -227,6 +182,55 @@ const App: React.FC = () => {
     supportCostPerUser: 'تكلفة الدعم'
   };
 
+  // ---- HANDLER FUNCTIONS (not hooks, safe after conditional) ----
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importData(file)
+        .then(() => {
+          setImportSuccess(true);
+          setImportError(null);
+          setTimeout(() => setImportSuccess(false), 3000);
+        })
+        .catch((err) => {
+          setImportError('فشل استيراد الملف. تأكد من صحة التنسيق.');
+          console.error(err);
+        });
+      e.target.value = '';
+    }
+  };
+
+  const handleAddCost = () => {
+    if (newCostName.trim() && newCostAmount > 0) {
+      addCostItem(newCostName, newCostAmount, 'fixed');
+      setNewCostName('');
+      setNewCostAmount(0);
+    }
+  };
+
+  const handleAddCapitalCost = () => {
+    if (newCapitalName.trim() && newCapitalAmount > 0) {
+      addCapitalCost({
+        name: newCapitalName,
+        amount: newCapitalAmount,
+        usefulLife: newCapitalLife,
+        purchaseDate: new Date().toISOString().split('T')[0],
+        salvageValue: newCapitalSalvage,
+        category: newCapitalCategory
+      });
+      setNewCapitalName('');
+      setNewCapitalAmount(0);
+      setNewCapitalLife(36);
+      setNewCapitalSalvage(0);
+    }
+  };
+
+  // ---- CONDITIONAL RETURN (AFTER all hooks) ----
+  if (showLogin) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="min-h-screen pb-20" dir="rtl">
       <header className="bg-slate-900 text-white py-6 px-6 shadow-xl sticky top-0 z-50">
@@ -251,11 +255,10 @@ const App: React.FC = () => {
                   <button
                     key={type}
                     onClick={() => handleScenarioChange(type)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
-                      activeScenario === type
-                        ? 'bg-indigo-600 text-white shadow-lg'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                    }`}
+                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${activeScenario === type
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                      }`}
                   >
                     {type === ScenarioType.OPTIMISTIC && <Zap className="w-3 h-3" />}
                     {type === ScenarioType.REALISTIC && <Target className="w-3 h-3" />}
@@ -264,7 +267,7 @@ const App: React.FC = () => {
                   </button>
                 ))}
               </div>
-              
+
               {/* Currency Toggle */}
               <button
                 onClick={toggleCurrency}
@@ -295,7 +298,7 @@ const App: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -307,44 +310,40 @@ const App: React.FC = () => {
               <div className="flex bg-slate-800/50 p-1 rounded-xl backdrop-blur-sm flex-1">
                 <button
                   onClick={() => setActiveTab('dashboard')}
-                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                    activeTab === 'dashboard'
-                      ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                  }`}
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'dashboard'
+                    ? 'bg-indigo-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   <span className="hidden sm:inline">الرئيسية</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('costs')}
-                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                    activeTab === 'costs'
-                      ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                  }`}
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'costs'
+                    ? 'bg-indigo-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
                 >
                   <Wallet className="w-4 h-4" />
                   <span className="hidden sm:inline">التكاليف</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('whatif')}
-                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                    activeTab === 'whatif'
-                      ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                  }`}
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'whatif'
+                    ? 'bg-indigo-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
                 >
                   <TrendingUp className="w-4 h-4" />
                   <span className="hidden sm:inline">ماذا لو</span>
                 </button>
                 <button
                   onClick={() => setActiveTab('settings')}
-                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                    activeTab === 'settings'
-                      ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                  }`}
+                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${activeTab === 'settings'
+                    ? 'bg-indigo-600 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">الإعدادات</span>
@@ -950,15 +949,14 @@ const App: React.FC = () => {
                 return (
                   <div
                     key={idx}
-                    className={`text-center p-4 rounded-xl transition-all ${
-                      isCurrent
-                        ? 'bg-indigo-600 text-white shadow-lg scale-105 ring-2 ring-indigo-300'
-                        : isBest
+                    className={`text-center p-4 rounded-xl transition-all ${isCurrent
+                      ? 'bg-indigo-600 text-white shadow-lg scale-105 ring-2 ring-indigo-300'
+                      : isBest
                         ? 'bg-emerald-50 border-2 border-emerald-500'
                         : isWorst
-                        ? 'bg-red-50 border-2 border-red-500'
-                        : 'bg-white border border-slate-200 hover:shadow-md'
-                    }`}
+                          ? 'bg-red-50 border-2 border-red-500'
+                          : 'bg-white border border-slate-200 hover:shadow-md'
+                      }`}
                   >
                     <div className="flex items-center justify-center gap-1 mb-2">
                       <span className={`text-sm font-bold ${isCurrent ? 'text-white' : 'text-slate-700'}`}>
@@ -1291,7 +1289,7 @@ const App: React.FC = () => {
                     <Settings className="w-4 h-4" />
                     تصدير واستيراد البيانات
                   </h3>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <button
                       onClick={exportData}
@@ -1302,7 +1300,7 @@ const App: React.FC = () => {
                       </svg>
                       تصدير البيانات
                     </button>
-                    
+
                     <label className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 cursor-pointer">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -1335,7 +1333,7 @@ const App: React.FC = () => {
                     <p className="text-sm text-blue-800 flex items-start gap-2">
                       <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
                       <span>
-                        <strong>تصدير البيانات:</strong> يحفظ جميع الإعدادات والتكاليف والأصول في ملف JSON.<br/>
+                        <strong>تصدير البيانات:</strong> يحفظ جميع الإعدادات والتكاليف والأصول في ملف JSON.<br />
                         <strong>استيراد البيانات:</strong> يحمّل الإعدادات من ملف JSON محفوظ.
                       </span>
                     </p>
@@ -1367,11 +1365,10 @@ const App: React.FC = () => {
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 flex flex-col items-center justify-center py-3 px-2 transition-all ${
-                  isActive
-                    ? 'text-indigo-600 bg-indigo-50'
-                    : 'text-slate-400 hover:text-slate-600'
-                }`}
+                className={`flex-1 flex flex-col items-center justify-center py-3 px-2 transition-all ${isActive
+                  ? 'text-indigo-600 bg-indigo-50'
+                  : 'text-slate-400 hover:text-slate-600'
+                  }`}
               >
                 <div className={`relative ${isActive ? 'scale-110' : 'scale-100'} transition-transform`}>
                   <Icon className={`w-6 h-6 ${isActive ? 'fill-indigo-100' : ''}`} />
