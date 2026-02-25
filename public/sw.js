@@ -1,4 +1,4 @@
-const CACHE_NAME = 'radar-investor-v2';
+const CACHE_NAME = 'radar-investor-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -30,15 +30,21 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only intercept normal http/https requests
-  if (!event.request.url.startsWith('http')) return;
+  const url = new URL(event.request.url);
 
+  // Skip non-HTTP requests
+  if (!url.protocol.startsWith('http')) return;
+
+  // Skip cross-origin requests entirely (fonts, CDNs, etc.)
+  // Let the browser handle them natively without SW interference
+  if (url.origin !== self.location.origin) return;
+
+  // For same-origin requests: network-first, fallback to cache
   event.respondWith(
-    // 1. Try network first
     fetch(event.request)
       .then((response) => {
-        // Cache the successful network response
-        if (response && response.status === 200 && response.type === 'basic') {
+        // Cache successful responses
+        if (response && response.status === 200) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
@@ -47,8 +53,11 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // 2. If network fails (e.g., offline), fallback to cache
-        return caches.match(event.request);
+        // Offline fallback: try cache
+        return caches.match(event.request).then((cached) => {
+          // Return cached response or a simple offline fallback
+          return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+        });
       })
   );
 });
