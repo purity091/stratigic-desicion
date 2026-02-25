@@ -232,8 +232,8 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20" dir="rtl">
-      <header className="bg-slate-900 text-white py-6 px-6 shadow-xl sticky top-0 z-50">
+    <div className="min-h-screen" dir="rtl">
+      <header className="bg-slate-900 text-white py-3 lg:py-6 px-4 lg:px-6 shadow-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
@@ -249,8 +249,8 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-3 w-full lg:w-auto">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex bg-slate-800/50 p-1 rounded-xl backdrop-blur-sm flex-1">
+            <div className="flex items-center justify-between gap-2 lg:gap-3">
+              <div className="hidden lg:flex bg-slate-800/50 p-1 rounded-xl backdrop-blur-sm flex-1">
                 {(Object.keys(ScenarioType) as ScenarioType[]).map((type) => (
                   <button
                     key={type}
@@ -282,8 +282,8 @@ const App: React.FC = () => {
                 <span className="text-xs font-bold text-white">1 USD = {exchangeRate} SAR</span>
               </div>
               {/* User Menu */}
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-xl backdrop-blur-sm">
+              <div className="flex items-center gap-1 lg:gap-2">
+                <div className="hidden lg:flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-xl backdrop-blur-sm">
                   <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
                   </div>
@@ -291,15 +291,16 @@ const App: React.FC = () => {
                 </div>
                 <button
                   onClick={logout}
-                  className="p-2.5 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-colors"
+                  className="p-2 lg:p-2.5 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600 hover:text-white transition-colors"
                   title="تسجيل الخروج"
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="w-4 h-4 lg:w-5 lg:h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Desktop only: Tab bar + sidebar toggle */}
+            <div className="hidden lg:flex items-center gap-2">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                 className="p-2.5 bg-slate-800/50 text-slate-400 rounded-xl hover:text-white hover:bg-slate-700/50 transition-colors"
@@ -316,7 +317,7 @@ const App: React.FC = () => {
                     }`}
                 >
                   <LayoutDashboard className="w-4 h-4" />
-                  <span className="hidden sm:inline">الرئيسية</span>
+                  الرئيسية
                 </button>
                 <button
                   onClick={() => setActiveTab('costs')}
@@ -326,7 +327,7 @@ const App: React.FC = () => {
                     }`}
                 >
                   <Wallet className="w-4 h-4" />
-                  <span className="hidden sm:inline">التكاليف</span>
+                  التكاليف
                 </button>
                 <button
                   onClick={() => setActiveTab('whatif')}
@@ -336,7 +337,7 @@ const App: React.FC = () => {
                     }`}
                 >
                   <TrendingUp className="w-4 h-4" />
-                  <span className="hidden sm:inline">ماذا لو</span>
+                  ماذا لو
                 </button>
                 <button
                   onClick={() => setActiveTab('settings')}
@@ -346,7 +347,7 @@ const App: React.FC = () => {
                     }`}
                 >
                   <Settings className="w-4 h-4" />
-                  <span className="hidden sm:inline">الإعدادات</span>
+                  الإعدادات
                 </button>
               </div>
             </div>
@@ -354,12 +355,12 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <main className="max-w-7xl mx-auto px-3 md:px-6 mt-4 lg:mt-8 pb-20 lg:pb-4 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8">
 
         {activeTab === 'dashboard' && (
           <>
             {isSidebarOpen && (
-              <aside className="lg:col-span-4 space-y-6">
+              <aside className="hidden lg:block lg:col-span-4 space-y-6">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-32 max-h-[calc(100vh-8rem)] overflow-y-auto">
                   <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                     <Settings className="w-5 h-5 text-indigo-600" />
@@ -435,7 +436,7 @@ const App: React.FC = () => {
               </aside>
             )}
 
-            <section className={isSidebarOpen ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-8>
+            <section className={`col-span-12 ${isSidebarOpen ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-8`}>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <MetricCard
                   label="LTV (القيمة الدائمة)"
@@ -1355,8 +1356,8 @@ const App: React.FC = () => {
 
       </main>
 
-      {/* Bottom Navigation Bar - Mobile Apps Style */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50 safe-area-bottom">
+      {/* Bottom Navigation Bar - Mobile Only */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50 safe-area-bottom">
         <div className="max-w-lg mx-auto flex justify-around items-center">
           {(['dashboard', 'costs', 'whatif', 'settings'] as TabType[]).map((tab) => {
             const Icon = getTabIcon(tab);
