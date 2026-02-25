@@ -111,10 +111,25 @@ export const calculateMetrics = (
   };
 };
 
-export const formatCurrency = (val: number) => {
-  return new Intl.NumberFormat('ar-SA', { style: 'currency', currency: 'SAR', maximumFractionDigits: 0 }).format(val);
+export const formatCurrency = (val: number, currency: 'SAR' | 'USD' = 'SAR') => {
+  return new Intl.NumberFormat('ar-SA', { 
+    style: 'currency', 
+    currency: currency,
+    maximumFractionDigits: 0,
+    useGrouping: true
+  }).format(val);
 };
 
 export const formatPercent = (val: number) => {
-  return val.toFixed(1) + '%';
+  return val.toLocaleString('ar-SA', { maximumFractionDigits: 1 }) + '%';
+};
+
+// Convert Western numerals to Arabic-Indic numerals
+export const toArabicNumerals = (num: number | string): string => {
+  const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  return String(num).replace(/\d/g, d => arabicNumerals[parseInt(d)]);
+};
+
+export const formatNumber = (num: number): string => {
+  return num.toLocaleString('ar-SA');
 };

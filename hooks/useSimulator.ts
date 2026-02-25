@@ -1,11 +1,15 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ScenarioType, SimulationInputs, RiskIndicator, CostItem, CapitalCostItem } from '../types';
+import { ScenarioType, SimulationInputs, RiskIndicator, CostItem, CapitalCostItem, CurrencyType } from '../types';
 import { DEFAULT_INPUTS } from '../constants';
 import { calculateMetrics, calculateMonthlyDepreciation, calculateTotalCapitalInvestment, formatCurrency, formatPercent } from '../utils/math';
 
 const STORAGE_KEY_SETTINGS = 'simulator_settings';
 const STORAGE_KEY_COSTS = 'simulator_costs';
 const STORAGE_KEY_CAPITAL = 'simulator_capital_costs';
+const STORAGE_KEY_CURRENCY = 'simulator_currency';
+
+// Fixed exchange rate: 1 USD = 3.75 SAR
+const USD_SAR_RATE = 3.75;
 
 const defaultCostItems: CostItem[] = [
   { id: '1', name: 'إيجار المكتب', amount: 5000, type: 'fixed' },
@@ -26,6 +30,7 @@ export const useSimulator = () => {
   const [costItems, setCostItems] = useState<CostItem[]>(defaultCostItems);
   const [capitalCosts, setCapitalCosts] = useState<CapitalCostItem[]>(defaultCapitalCosts);
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [currency, setCurrency] = useState<CurrencyType>('SAR');
 
   // Load settings and costs from localStorage on mount
   useEffect(() => {
@@ -33,25 +38,33 @@ export const useSimulator = () => {
       const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
       const savedCosts = localStorage.getItem(STORAGE_KEY_COSTS);
       const savedCapital = localStorage.getItem(STORAGE_KEY_CAPITAL);
-      
+      const savedCurrency = localStorage.getItem(STORAGE_KEY_CURRENCY);
+
       if (savedSettings) {
         const parsed = JSON.parse(savedSettings);
         setInputs(parsed.inputs || DEFAULT_INPUTS[ScenarioType.REALISTIC]);
         setActiveScenario(parsed.activeScenario || ScenarioType.REALISTIC);
         setSettingsSaved(true);
       }
-      
+
       if (savedCosts) {
         const parsedCosts = JSON.parse(savedCosts);
         if (Array.isArray(parsedCosts) && parsedCosts.length > 0) {
           setCostItems(parsedCosts);
         }
       }
-      
+
       if (savedCapital) {
         const parsedCapital = JSON.parse(savedCapital);
         if (Array.isArray(parsedCapital) && parsedCapital.length > 0) {
           setCapitalCosts(parsedCapital);
+        }
+      }
+
+      if (savedCurrency) {
+        const parsedCurrency = JSON.parse(savedCurrency);
+        if (parsedCurrency.currency) {
+          setCurrency(parsedCurrency.currency);
         }
       }
     } catch (e) {
@@ -95,6 +108,84 @@ export const useSimulator = () => {
     } catch (e) {
       console.error('Failed to reset settings', e);
     }
+  };
+
+  const setCurrencyType = (newCurrency: CurrencyType) => {
+    setCurrency(newCurrency);
+    localStorage.setItem(STORAGE_KEY_CURRENCY, JSON.stringify({ currency: newCurrency }));
+  };
+
+  const toggleCurrency = () => {
+    const newCurrency = currency === 'SAR' ? 'USD' : 'SAR';
+    setCurrencyType(newCurrency);
+  };
+
+  const exchangeRate = USD_SAR_RATE;
+  const convertAmount = (amount: number, from: CurrencyType = 'SAR', to: CurrencyType = currency): number => {
+    if (from === to) return amount;
+    if (from === 'SAR' && to === 'USD') return amount / USD_SAR_RATE;
+    if (from === 'USD' && to === 'SAR') return amount * USD_SAR_RATE;
+    return amount;
+  };
+
+  // Export/Import functionality
+  const exportData = () => {
+    const exportObj = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      scenario: activeScenario,
+      inputs,
+      costItems,
+      capitalCosts,
+      currency
+    };
+    
+    const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `simulator-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = (file: File): Promise<boolean> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const imported = JSON.parse(e.target?.result as string);
+          
+          if (!imported.version || !imported.inputs) {
+            throw new Error('Invalid file format');
+          }
+
+          if (imported.scenario) setActiveScenario(imported.scenario);
+          if (imported.inputs) setInputs(imported.inputs);
+          if (imported.costItems) setCostItems(imported.costItems);
+          if (imported.capitalCosts) setCapitalCosts(imported.capitalCosts);
+          if (imported.currency) setCurrency(imported.currency);
+
+          // Save to localStorage
+          localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({
+            inputs: imported.inputs,
+            activeScenario: imported.scenario
+          }));
+          localStorage.setItem(STORAGE_KEY_COSTS, JSON.stringify(imported.costItems || []));
+          localStorage.setItem(STORAGE_KEY_CAPITAL, JSON.stringify(imported.capitalCosts || []));
+          localStorage.setItem(STORAGE_KEY_CURRENCY, JSON.stringify({ currency: imported.currency || 'SAR' }));
+
+          resolve(true);
+        } catch (error) {
+          console.error('Import failed:', error);
+          reject(error);
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
   };
 
   const addCostItem = (name: string, amount: number, type: 'fixed' | 'variable' = 'fixed') => {
@@ -275,6 +366,15 @@ export const useSimulator = () => {
     updateCapitalCost,
     deleteCapitalCost,
     totalMonthlyDepreciation,
-    totalCapitalInvestment
+    totalCapitalInvestment,
+    // Currency
+    currency,
+    setCurrencyType,
+    toggleCurrency,
+    exchangeRate,
+    convertAmount,
+    // Export/Import
+    exportData,
+    importData
   };
 };

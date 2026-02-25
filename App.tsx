@@ -64,8 +64,36 @@ const App: React.FC = () => {
     updateCapitalCost,
     deleteCapitalCost,
     totalMonthlyDepreciation,
-    totalCapitalInvestment
+    totalCapitalInvestment,
+    // Currency
+    currency,
+    setCurrencyType,
+    toggleCurrency,
+    exchangeRate,
+    // Export/Import
+    exportData,
+    importData
   } = useSimulator();
+
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState(false);
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importData(file)
+        .then(() => {
+          setImportSuccess(true);
+          setImportError(null);
+          setTimeout(() => setImportSuccess(false), 3000);
+        })
+        .catch((err) => {
+          setImportError('فشل استيراد الملف. تأكد من صحة التنسيق.');
+          console.error(err);
+        });
+      e.target.value = '';
+    }
+  };
 
   const handleAddCost = () => {
     if (newCostName.trim() && newCostAmount > 0) {
@@ -186,25 +214,41 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-3 w-full lg:w-auto">
-            <div className="flex bg-slate-800/50 p-1 rounded-xl backdrop-blur-sm">
-              {(Object.keys(ScenarioType) as ScenarioType[]).map((type) => (
-                <button
-                  key={type}
-                  onClick={() => handleScenarioChange(type)}
-                  className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
-                    activeScenario === type
-                      ? 'bg-indigo-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-                  }`}
-                >
-                  {type === ScenarioType.OPTIMISTIC && <Zap className="w-4 h-4" />}
-                  {type === ScenarioType.REALISTIC && <Target className="w-4 h-4" />}
-                  {type === ScenarioType.PESSIMISTIC && <Shield className="w-4 h-4" />}
-                  <span className="hidden sm:inline">{type === ScenarioType.OPTIMISTIC ? 'متفائل' : type === ScenarioType.REALISTIC ? 'واقعي' : 'متشائم'}</span>
-                </button>
-              ))}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex bg-slate-800/50 p-1 rounded-xl backdrop-blur-sm flex-1">
+                {(Object.keys(ScenarioType) as ScenarioType[]).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => handleScenarioChange(type)}
+                    className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1 ${
+                      activeScenario === type
+                        ? 'bg-indigo-600 text-white shadow-lg'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
+                  >
+                    {type === ScenarioType.OPTIMISTIC && <Zap className="w-3 h-3" />}
+                    {type === ScenarioType.REALISTIC && <Target className="w-3 h-3" />}
+                    {type === ScenarioType.PESSIMISTIC && <Shield className="w-3 h-3" />}
+                    <span className="hidden sm:inline">{type === ScenarioType.OPTIMISTIC ? 'متفائل' : type === ScenarioType.REALISTIC ? 'واقعي' : 'متشائم'}</span>
+                  </button>
+                ))}
+              </div>
+              
+              {/* Currency Toggle */}
+              <button
+                onClick={toggleCurrency}
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl font-bold text-sm shadow-lg hover:from-emerald-700 hover:to-teal-700 transition-all flex items-center gap-2 whitespace-nowrap"
+                title="تغيير العملة"
+              >
+                <span className="text-lg">{currency === 'SAR' ? '🇸🇦' : '🇺🇸'}</span>
+                <span>{currency}</span>
+              </button>
+              <div className="hidden lg:flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-xl backdrop-blur-sm">
+                <span className="text-xs text-slate-400">سعر الصرف:</span>
+                <span className="text-xs font-bold text-white">1 USD = {exchangeRate} SAR</span>
+              </div>
             </div>
-
+            
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -349,13 +393,13 @@ const App: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <MetricCard
                   label="LTV (القيمة الدائمة)"
-                  value={formatCurrency(metrics.ltv)}
+                  value={formatCurrency(metrics.ltv, currency)}
                   description="صافي الربح المتوقع من العميل الواحد"
                   status={metrics.ltv > (metrics.cac * 3) ? 'success' : metrics.ltv > (metrics.cac * 2) ? 'warning' : 'danger'}
                 />
                 <MetricCard
                   label="CAC (تكلفة الاستحواذ)"
-                  value={formatCurrency(metrics.cac)}
+                  value={formatCurrency(metrics.cac, currency)}
                   description="تكلفة الحصول على العميل"
                 />
                 <MetricCard
@@ -384,7 +428,7 @@ const App: React.FC = () => {
                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
                         <YAxis hide />
                         <Tooltip
-                          formatter={(value: any) => formatCurrency(value)}
+                          formatter={(value: any) => formatCurrency(value, currency)}
                           contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                         />
                         <Bar dataKey="ربح" fill="#4f46e5" radius={[6, 6, 0, 0]} />
@@ -431,11 +475,11 @@ const App: React.FC = () => {
                     <div className="flex gap-4">
                       <div className="text-center bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/10 flex-1">
                         <p className="text-[10px] text-indigo-200 uppercase mb-1">صافي ربح 12 شهر</p>
-                        <p className="text-xl font-bold">{formatCurrency(metrics.netProfit12Months)}</p>
+                        <p className="text-xl font-bold">{formatCurrency(metrics.netProfit12Months, currency)}</p>
                       </div>
                       <div className="text-center bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/10 flex-1">
                         <p className="text-[10px] text-indigo-200 uppercase mb-1">الربح من العميل</p>
-                        <p className="text-xl font-bold">{formatCurrency(metrics.ltv)}</p>
+                        <p className="text-xl font-bold">{formatCurrency(metrics.ltv, currency)}</p>
                       </div>
                     </div>
                   </div>
@@ -507,7 +551,7 @@ const App: React.FC = () => {
                 </h3>
                 <div className="text-left">
                   <p className="text-sm text-slate-500">إجمالي التكاليف الشهرية</p>
-                  <p className="text-2xl font-bold text-indigo-600">{formatCurrency(totalMonthlyFixedCosts)}</p>
+                  <p className="text-2xl font-bold text-indigo-600">{formatCurrency(totalMonthlyFixedCosts, currency)}</p>
                 </div>
               </div>
 
@@ -642,7 +686,7 @@ const App: React.FC = () => {
                   </h3>
                   <div className="text-left">
                     <p className="text-xs text-slate-500">إجمالي الاستثمار الرأسمالي</p>
-                    <p className="text-lg font-bold text-indigo-600">{formatCurrency(totalCapitalInvestment)}</p>
+                    <p className="text-lg font-bold text-indigo-600">{formatCurrency(totalCapitalInvestment, currency)}</p>
                   </div>
                 </div>
 
@@ -677,10 +721,10 @@ const App: React.FC = () => {
                                 {categoryLabels[item.category]}
                               </span>
                             </td>
-                            <td className="py-3 px-2 text-slate-700">{formatCurrency(item.amount)}</td>
+                            <td className="py-3 px-2 text-slate-700">{formatCurrency(item.amount, currency)}</td>
                             <td className="py-3 px-2 text-slate-600">{item.usefulLife} شهر</td>
-                            <td className="py-3 px-2 text-slate-600">{formatCurrency(item.salvageValue)}</td>
-                            <td className="py-3 px-2 font-bold text-indigo-600">{formatCurrency(monthlyDep)}</td>
+                            <td className="py-3 px-2 text-slate-600">{formatCurrency(item.salvageValue, currency)}</td>
+                            <td className="py-3 px-2 font-bold text-indigo-600">{formatCurrency(monthlyDep, currency)}</td>
                             <td className="py-3 px-2">
                               <button
                                 onClick={() => deleteCapitalCost(item.id)}
@@ -713,28 +757,28 @@ const App: React.FC = () => {
                   <Wallet className="w-4 h-4" />
                   التكاليف الشهرية
                 </p>
-                <p className="text-3xl font-bold">{formatCurrency(totalMonthlyFixedCosts)}</p>
+                <p className="text-3xl font-bold">{formatCurrency(totalMonthlyFixedCosts, currency)}</p>
               </div>
               <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white p-6 rounded-2xl shadow-lg">
                 <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
                   <PieChart className="w-4 h-4" />
                   الاستهلاك الشهري
                 </p>
-                <p className="text-3xl font-bold">{formatCurrency(totalMonthlyDepreciation)}</p>
+                <p className="text-3xl font-bold">{formatCurrency(totalMonthlyDepreciation, currency)}</p>
               </div>
               <div className="bg-gradient-to-br from-amber-500 to-amber-600 text-white p-6 rounded-2xl shadow-lg">
                 <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
                   <DollarSign className="w-4 h-4" />
                   إجمالي الاستثمار
                 </p>
-                <p className="text-3xl font-bold">{formatCurrency(totalCapitalInvestment)}</p>
+                <p className="text-3xl font-bold">{formatCurrency(totalCapitalInvestment, currency)}</p>
               </div>
               <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white p-6 rounded-2xl shadow-lg">
                 <p className="text-sm opacity-80 mb-1 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
                   صافي الربح (12 شهر)
                 </p>
-                <p className="text-3xl font-bold">{formatCurrency(metrics.netProfit12Months)}</p>
+                <p className="text-3xl font-bold">{formatCurrency(metrics.netProfit12Months, currency)}</p>
               </div>
             </div>
 
@@ -747,17 +791,17 @@ const App: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="text-center p-6 bg-slate-50 rounded-xl">
                   <p className="text-sm text-slate-600 mb-2">التكاليف التشغيلية السنوية</p>
-                  <p className="text-3xl font-bold text-indigo-600">{formatCurrency(totalMonthlyFixedCosts * 12)}</p>
+                  <p className="text-3xl font-bold text-indigo-600">{formatCurrency(totalMonthlyFixedCosts * 12, currency)}</p>
                   <p className="text-xs text-slate-500 mt-2">إيجار، رواتب، خدمات</p>
                 </div>
                 <div className="text-center p-6 bg-slate-50 rounded-xl">
                   <p className="text-sm text-slate-600 mb-2">الاستهلاك السنوي</p>
-                  <p className="text-3xl font-bold text-purple-600">{formatCurrency(totalMonthlyDepreciation * 12)}</p>
+                  <p className="text-3xl font-bold text-purple-600">{formatCurrency(totalMonthlyDepreciation * 12, currency)}</p>
                   <p className="text-xs text-slate-500 mt-2">استهلاك الأصول الرأسمالية</p>
                 </div>
                 <div className="text-center p-6 bg-slate-50 rounded-xl">
                   <p className="text-sm text-slate-600 mb-2">إجمالي التكاليف السنوية</p>
-                  <p className="text-3xl font-bold text-amber-600">{formatCurrency((totalMonthlyFixedCosts + totalMonthlyDepreciation) * 12)}</p>
+                  <p className="text-3xl font-bold text-amber-600">{formatCurrency((totalMonthlyFixedCosts + totalMonthlyDepreciation) * 12, currency)}</p>
                   <p className="text-xs text-slate-500 mt-2">التكاليف الكاملة</p>
                 </div>
               </div>
@@ -881,7 +925,7 @@ const App: React.FC = () => {
                       {variableLabels[whatIfVariable]}
                     </p>
                     <p className={`text-lg font-bold ${isCurrent ? 'text-white' : isBest ? 'text-emerald-600' : isWorst ? 'text-red-600' : 'text-slate-800'}`}>
-                      {formatCurrency(data.netProfit12Months)}
+                      {formatCurrency(data.netProfit12Months, currency)}
                     </p>
                     <p className={`text-[10px] ${isCurrent ? 'text-white/70' : 'text-slate-400'}`}>
                       ربح سنوي
@@ -922,7 +966,7 @@ const App: React.FC = () => {
                       />
                       <YAxis hide />
                       <Tooltip
-                        formatter={(value: any) => formatCurrency(value)}
+                        formatter={(value: any) => formatCurrency(value, currency)}
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                         labelFormatter={(label) => `${variableLabels[whatIfVariable]}: ${label}`}
                       />
@@ -955,7 +999,7 @@ const App: React.FC = () => {
                       />
                       <YAxis hide />
                       <Tooltip
-                        formatter={(value: any) => formatCurrency(value)}
+                        formatter={(value: any) => formatCurrency(value, currency)}
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       />
                       <Area type="monotone" dataKey="ltv" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.2} strokeWidth={3} />
@@ -978,9 +1022,9 @@ const App: React.FC = () => {
                   {whatIfInsights.best.value}
                   {(whatIfVariable as string).includes('Rate') || (whatIfVariable as string).includes('Commission') || (whatIfVariable as string).includes('Discount') || (whatIfVariable as string).includes('Fee') ? '%' : ''}
                 </p>
-                <p className="text-xs text-emerald-600 mb-2">تعطي أعلى ربح: {formatCurrency(whatIfInsights.best.netProfit12Months)}</p>
+                <p className="text-xs text-emerald-600 mb-2">تعطي أعلى ربح: {formatCurrency(whatIfInsights.best.netProfit12Months, currency)}</p>
                 <div className="text-xs text-emerald-700 bg-emerald-100 px-2 py-1 rounded inline-block">
-                  +{formatCurrency(whatIfInsights.profitImprovement)} عن الحالي
+                  +{formatCurrency(whatIfInsights.profitImprovement, currency)} عن الحالي
                 </div>
               </div>
 
@@ -995,7 +1039,7 @@ const App: React.FC = () => {
                   {whatIfBaseValue}
                   {(whatIfVariable as string).includes('Rate') || (whatIfVariable as string).includes('Commission') || (whatIfVariable as string).includes('Discount') || (whatIfVariable as string).includes('Fee') ? '%' : ''}
                 </p>
-                <p className="text-xs text-slate-600 mb-2">ربح سنوي: {formatCurrency(whatIfInsights.base.netProfit12Months)}</p>
+                <p className="text-xs text-slate-600 mb-2">ربح سنوي: {formatCurrency(whatIfInsights.base.netProfit12Months, currency)}</p>
                 <div className="text-xs text-slate-700 bg-slate-200 px-2 py-1 rounded inline-block">
                   {whatIfInsights.improvementPercent > 0 ? '+' : ''}{whatIfInsights.improvementPercent.toFixed(1)}% للتحسين
                 </div>
@@ -1012,9 +1056,9 @@ const App: React.FC = () => {
                   {whatIfInsights.worst.value}
                   {(whatIfVariable as string).includes('Rate') || (whatIfVariable as string).includes('Commission') || (whatIfVariable as string).includes('Discount') || (whatIfVariable as string).includes('Fee') ? '%' : ''}
                 </p>
-                <p className="text-xs text-red-600 mb-2">تعطي أقل ربح: {formatCurrency(whatIfInsights.worst.netProfit12Months)}</p>
+                <p className="text-xs text-red-600 mb-2">تعطي أقل ربح: {formatCurrency(whatIfInsights.worst.netProfit12Months, currency)}</p>
                 <div className="text-xs text-red-700 bg-red-100 px-2 py-1 rounded inline-block">
-                  -{formatCurrency(whatIfInsights.profitDecline)} عن الحالي
+                  -{formatCurrency(whatIfInsights.profitDecline, currency)} عن الحالي
                 </div>
               </div>
             </div>
@@ -1094,7 +1138,7 @@ const App: React.FC = () => {
                     )}
                     {whatIfVariable === 'upfrontFeePerPartner' && (
                       <>
-                        <strong className="block mb-2">🎁 الرسوم الأولية</strong>
+                        <strong className="block mb-2">🎁 الرسو���� الأولية</strong>
                         الرسوم الثابتة تزيد المخاطرة:
                         <ul className="mt-2 space-y-1 mr-4 list-disc">
                           <li>فكّر في نموذج "عمولة فقط" للشركاء الجدد</li>
@@ -1110,7 +1154,7 @@ const App: React.FC = () => {
                         هذا المتغير يؤثر على نتائجك:
                         <ul className="mt-2 space-y-1 mr-4 list-disc">
                           <li>راقب تأثيره باستمرار</li>
-                          <li>اضبطه بناءً على الأداء الفعلي</li>
+                          <li>ا��بطه ب��اءً على الأداء الفعلي</li>
                           <li>قارنه مع معايير الصناعة</li>
                           <li>اختبر سيناريوهات مختلفة</li>
                         </ul>
@@ -1134,7 +1178,7 @@ const App: React.FC = () => {
                     <TrendingUp className="w-4 h-4 text-indigo-600" />
                   </div>
                   <p className="text-2xl font-bold text-indigo-600">
-                    {formatCurrency(whatIfInsights.best.netProfit12Months - whatIfInsights.worst.netProfit12Months)}
+                    {formatCurrency(whatIfInsights.best.netProfit12Months - whatIfInsights.worst.netProfit12Months, currency)}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">الفرق بين أفضل وأسوأ سيناريو</p>
                 </div>
@@ -1192,6 +1236,63 @@ const App: React.FC = () => {
                     <RotateCcw className="w-5 h-5" />
                     إعادة تعيين
                   </button>
+                </div>
+
+                {/* Export/Import Section */}
+                <div className="border-t border-slate-200 pt-4 mt-4">
+                  <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    تصدير واستيراد البيانات
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <button
+                      onClick={exportData}
+                      className="px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      تصدير البيانات
+                    </button>
+                    
+                    <label className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      استيراد بيانات
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImportFile}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {importSuccess && (
+                    <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-emerald-700">
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span className="text-sm font-semibold">تم استيراد البيانات بنجاح!</span>
+                    </div>
+                  )}
+
+                  {importError && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+                      <AlertTriangle className="w-5 h-5" />
+                      <span className="text-sm font-semibold">{importError}</span>
+                    </div>
+                  )}
+
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800 flex items-start gap-2">
+                      <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                      <span>
+                        <strong>تصدير البيانات:</strong> يحفظ جميع الإعدادات والتكاليف والأصول في ملف JSON.<br/>
+                        <strong>استيراد البيانات:</strong> يحمّل الإعدادات من ملف JSON محفوظ.
+                      </span>
+                    </p>
+                  </div>
                 </div>
 
                 <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">

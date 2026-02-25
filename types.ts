@@ -48,9 +48,17 @@ export interface CapitalCostItem {
   category: 'equipment' | 'furniture' | 'technology' | 'infrastructure' | 'other';
 }
 
+export type CurrencyType = 'SAR' | 'USD';
+
+export interface CurrencySettings {
+  currency: CurrencyType;
+  exchangeRate: number; // 1 USD = X SAR
+}
+
 export interface Settings {
   monthlyFixedCosts: CostItem[];
   capitalCosts: CapitalCostItem[];
+  currency: CurrencySettings;
 }
 
 export interface SimulationMetrics {
