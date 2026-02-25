@@ -14,12 +14,18 @@ import { RiskIndicatorItem } from './components/RiskIndicatorItem/RiskIndicatorI
 import { AdviceCard } from './components/AdviceCard/AdviceCard';
 import { calculateMetrics } from './utils/math';
 
-type TabType = 'dashboard' | 'costs' | 'settings';
+type TabType = 'dashboard' | 'costs' | 'settings' | 'whatif';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [newCostName, setNewCostName] = useState('');
   const [newCostAmount, setNewCostAmount] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // What-if Analysis state
+  const [whatIfVariable, setWhatIfVariable] = useState<keyof SimulationInputs>('churnRate');
+  const [whatIfBaseValue, setWhatIfBaseValue] = useState(inputs.churnRate);
+  const [whatIfRange, setWhatIfRange] = useState({ min: 5, max: 30, step: 5 });
   
   const {
     activeScenario,
@@ -48,6 +54,52 @@ const App: React.FC = () => {
     }
   };
 
+  // Update what-if base value when variable changes
+  React.useEffect(() => {
+    setWhatIfBaseValue(inputs[whatIfVariable] as number);
+    
+    // Set appropriate range based on variable
+    const ranges: Record<string, { min: number; max: number; step: number }> = {
+      churnRate: { min: 1, max: 50, step: 5 },
+      avgRetentionMonths: { min: 1, max: 24, step: 1 },
+      partnerCount: { min: 5, max: 500, step: 10 },
+      avgReferralsPerPartner: { min: 1, max: 100, step: 5 },
+      firstMonthCommission: { min: 0, max: 100, step: 5 },
+      recurringCommission: { min: 0, max: 50, step: 5 },
+      upfrontFeePerPartner: { min: 0, max: 10000, step: 500 },
+      avgSubscriptionPrice: { min: 50, max: 1000, step: 50 },
+      influencerDiscount: { min: 0, max: 50, step: 5 },
+      conversionRate: { min: 0.5, max: 10, step: 0.5 },
+      refundRate: { min: 0, max: 20, step: 1 },
+      infraCostPerUser: { min: 5, max: 50, step: 5 },
+      paymentGatewayFee: { min: 1, max: 5, step: 0.5 },
+      supportCostPerUser: { min: 5, max: 50, step: 5 },
+    };
+    setWhatIfRange(ranges[whatIfVariable] || { min: 0, max: 100, step: 5 });
+  }, [whatIfVariable, inputs]);
+
+  // Generate what-if data
+  const whatIfData = React.useMemo(() => {
+    const values: number[] = [];
+    const { min, max, step } = whatIfRange;
+    for (let v = min; v <= max; v += step) {
+      values.push(Number(v.toFixed(1)));
+    }
+
+    return values.map(value => {
+      const modifiedInputs = { ...inputs, [whatIfVariable]: value };
+      const m = calculateMetrics(modifiedInputs, totalMonthlyFixedCosts);
+      return {
+        value,
+        ltv: m.ltv,
+        cac: m.cac,
+        netProfit12Months: m.netProfit12Months,
+        grossMarginPercentage: m.grossMarginPercentage,
+        paybackPeriod: m.paybackPeriod
+      };
+    });
+  }, [whatIfVariable, whatIfRange, inputs, totalMonthlyFixedCosts]);
+
   return (
     <div className="min-h-screen pb-20">
       <header className="bg-slate-900 text-white py-8 px-6 shadow-xl sticky top-0 z-50">
@@ -59,6 +111,7 @@ const App: React.FC = () => {
             </div>
             <p className="text-slate-400 text-sm">أداة قياس الوحدة الاقتصادية (Unit Economics) لاتخاذ قرارات برنامج الشركاء</p>
           </div>
+          
           <div className="flex flex-col gap-3">
             <div className="flex bg-slate-800 p-1 rounded-lg">
               {(Object.keys(ScenarioType) as ScenarioType[]).map((type) => (
@@ -74,37 +127,56 @@ const App: React.FC = () => {
                 </button>
               ))}
             </div>
-            <div className="flex bg-slate-800 p-1 rounded-lg justify-center">
+            
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                  activeTab === 'dashboard'
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="px-4 py-2 bg-slate-800 text-slate-400 rounded-lg hover:text-white transition-colors text-sm"
               >
-                📊 لوحة القيادة
+                {isSidebarOpen ? '🗂️ إخفاء القائمة' : '🗂️ إظهار القائمة'}
               </button>
-              <button
-                onClick={() => setActiveTab('costs')}
-                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                  activeTab === 'costs'
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                💰 التكاليف
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                  activeTab === 'settings'
-                    ? 'bg-indigo-600 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                ⚙️ الإعدادات
-              </button>
+              <div className="flex bg-slate-800 p-1 rounded-lg">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    activeTab === 'dashboard'
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  📊 الرئيسية
+                </button>
+                <button
+                  onClick={() => setActiveTab('costs')}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    activeTab === 'costs'
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  💰 التكاليف
+                </button>
+                <button
+                  onClick={() => setActiveTab('whatif')}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    activeTab === 'whatif'
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  🔮 ماذا لو
+                </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+                    activeTab === 'settings'
+                      ? 'bg-indigo-600 text-white shadow-lg'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  ⚙️ الإعدادات
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -114,82 +186,84 @@ const App: React.FC = () => {
 
         {activeTab === 'dashboard' && (
           <>
-            <aside className="lg:col-span-4 space-y-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-32 max-h-[80vh] overflow-y-auto">
-                <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                  مدخلات القرار
-                </h2>
+            {isSidebarOpen && (
+              <aside className="lg:col-span-4 space-y-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sticky top-32 max-h-[80vh] overflow-y-auto">
+                  <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    مدخلات القرار
+                  </h2>
 
-                <InputGroup label="متغيرات العمولة والمكافأة">
-                  <RangeInput
-                    label="عمولة الشهر الأول"
-                    value={inputs.firstMonthCommission}
-                    min={0} max={100} suffix="%"
-                    onChange={(v) => updateInput('firstMonthCommission', v)}
-                  />
-                  <RangeInput
-                    label="العمولة المتكررة"
-                    value={inputs.recurringCommission}
-                    min={0} max={50} suffix="%"
-                    onChange={(v) => updateInput('recurringCommission', v)}
-                  />
-                  <RangeInput
-                    label="مكافأة أولية لكل شريك (ثابتة)"
-                    value={inputs.upfrontFeePerPartner}
-                    min={0} max={10000} step={100} suffix=" ر.س"
-                    onChange={(v) => updateInput('upfrontFeePerPartner', v)}
-                  />
-                </InputGroup>
+                  <InputGroup label="متغيرات العمولة والمكافأة">
+                    <RangeInput
+                      label="عمولة الشهر الأول"
+                      value={inputs.firstMonthCommission}
+                      min={0} max={100} suffix="%"
+                      onChange={(v) => updateInput('firstMonthCommission', v)}
+                    />
+                    <RangeInput
+                      label="العمولة المتكررة"
+                      value={inputs.recurringCommission}
+                      min={0} max={50} suffix="%"
+                      onChange={(v) => updateInput('recurringCommission', v)}
+                    />
+                    <RangeInput
+                      label="مكافأة أولية لكل شريك (ثابتة)"
+                      value={inputs.upfrontFeePerPartner}
+                      min={0} max={10000} step={100} suffix=" ر.س"
+                      onChange={(v) => updateInput('upfrontFeePerPartner', v)}
+                    />
+                  </InputGroup>
 
-                <InputGroup label="التسعير والخصم">
-                  <RangeInput
-                    label="متوسط سعر الاشتراك"
-                    value={inputs.avgSubscriptionPrice}
-                    min={50} max={1000} step={10} suffix=" ر.س"
-                    onChange={(v) => updateInput('avgSubscriptionPrice', v)}
-                  />
-                  <RangeInput
-                    label="خصم المؤثر للمتابعين"
-                    value={inputs.influencerDiscount}
-                    min={0} max={50} suffix="%"
-                    onChange={(v) => updateInput('influencerDiscount', v)}
-                  />
-                </InputGroup>
+                  <InputGroup label="التسعير والخصم">
+                    <RangeInput
+                      label="متوسط سعر الاشتراك"
+                      value={inputs.avgSubscriptionPrice}
+                      min={50} max={1000} step={10} suffix=" ر.س"
+                      onChange={(v) => updateInput('avgSubscriptionPrice', v)}
+                    />
+                    <RangeInput
+                      label="خصم المؤثر للمتابعين"
+                      value={inputs.influencerDiscount}
+                      min={0} max={50} suffix="%"
+                      onChange={(v) => updateInput('influencerDiscount', v)}
+                    />
+                  </InputGroup>
 
-                <InputGroup label="سلوك العملاء">
-                  <RangeInput
-                    label="معدل الإلغاء الشهري"
-                    value={inputs.churnRate}
-                    min={1} max={50} suffix="%"
-                    onChange={(v) => updateInput('churnRate', v)}
-                  />
-                  <RangeInput
-                    label="متوسط مدة البقاء (أشهر)"
-                    value={inputs.avgRetentionMonths}
-                    min={1} max={24}
-                    onChange={(v) => updateInput('avgRetentionMonths', v)}
-                  />
-                </InputGroup>
+                  <InputGroup label="سلوك العملاء">
+                    <RangeInput
+                      label="معدل الإلغاء الشهري"
+                      value={inputs.churnRate}
+                      min={1} max={50} suffix="%"
+                      onChange={(v) => updateInput('churnRate', v)}
+                    />
+                    <RangeInput
+                      label="متوسط مدة البقاء (أشهر)"
+                      value={inputs.avgRetentionMonths}
+                      min={1} max={24}
+                      onChange={(v) => updateInput('avgRetentionMonths', v)}
+                    />
+                  </InputGroup>
 
-                <InputGroup label="حجم الشركاء">
-                  <RangeInput
-                    label="عدد الشركاء الفاعلين"
-                    value={inputs.partnerCount}
-                    min={1} max={500}
-                    onChange={(v) => updateInput('partnerCount', v)}
-                  />
-                  <RangeInput
-                    label="متوسط الإحالات لكل شريك"
-                    value={inputs.avgReferralsPerPartner}
-                    min={1} max={100}
-                    onChange={(v) => updateInput('avgReferralsPerPartner', v)}
-                  />
-                </InputGroup>
-              </div>
-            </aside>
+                  <InputGroup label="حجم الشركاء">
+                    <RangeInput
+                      label="عدد الشركاء الفاعلين"
+                      value={inputs.partnerCount}
+                      min={1} max={500}
+                      onChange={(v) => updateInput('partnerCount', v)}
+                    />
+                    <RangeInput
+                      label="متوسط الإحالات لكل شريك"
+                      value={inputs.avgReferralsPerPartner}
+                      min={1} max={100}
+                      onChange={(v) => updateInput('avgReferralsPerPartner', v)}
+                    />
+                  </InputGroup>
+                </div>
+              </aside>
+            )}
 
-            <section className="lg:col-span-8 space-y-8">
+            <section className={isSidebarOpen ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-8>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 <MetricCard
@@ -395,6 +469,195 @@ const App: React.FC = () => {
                 <p className="text-sm opacity-80 mb-1">نقطة التعادل الشهرية</p>
                 <p className="text-3xl font-bold">{formatCurrency(totalMonthlyFixedCosts / (metrics.grossMarginPercentage / 100) || 0)}</p>
               </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'whatif' && (
+          <section className="lg:col-span-12 space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                محاكاة "ماذا لو" - تحليل الحساسية
+              </h2>
+              
+              <p className="text-slate-600 mb-6 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                🔮 اختر متغيراً وشاهد كيف يؤثر تغييره على النتائج المالية. هذا يساعدك على فهم العوامل الأكثر تأثيراً في نجاح نموذج العمل.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">المتغير للتحليل</label>
+                  <select
+                    value={whatIfVariable}
+                    onChange={(e) => setWhatIfVariable(e.target.value as keyof SimulationInputs)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                  >
+                    <option value="churnRate">معدل الإلغاء الشهري %</option>
+                    <option value="avgRetentionMonths">متوسط مدة البقاء (أشهر)</option>
+                    <option value="partnerCount">عدد الشركاء الفاعلين</option>
+                    <option value="avgReferralsPerPartner">متوسط الإحالات لكل شريك</option>
+                    <option value="firstMonthCommission">عمولة الشهر الأول %</option>
+                    <option value="recurringCommission">العمولة المتكررة %</option>
+                    <option value="upfrontFeePerPartner">المكافأة الأولية لكل شريك (ر.س)</option>
+                    <option value="avgSubscriptionPrice">متوسط سعر الاشتراك (ر.س)</option>
+                    <option value="influencerDiscount">خصم المؤثر %</option>
+                    <option value="conversionRate">معدل التحويل %</option>
+                    <option value="refundRate">معدل الاسترداد %</option>
+                    <option value="infraCostPerUser">تكلفة البنية التحتية للمستخدم (ر.س)</option>
+                    <option value="paymentGatewayFee">رسوم بوابة الدفع %</option>
+                    <option value="supportCostPerUser">تكلفة الدعم للمستخدم (ر.س)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    القيمة الحالية: <span className="text-indigo-600">{whatIfBaseValue}</span>
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min={whatIfRange.min}
+                      max={whatIfRange.max}
+                      step={whatIfRange.step}
+                      value={whatIfBaseValue}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setWhatIfBaseValue(val);
+                        updateInput(whatIfVariable, val);
+                      }}
+                      className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                    />
+                    <span className="text-sm text-slate-500 w-20 text-left">
+                      {whatIfRange.min} - {whatIfRange.max}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white p-6 rounded-2xl shadow-lg mb-6">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  تأثير المتغير على المقاييس الرئيسية
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  {whatIfData.map((data, idx) => (
+                    <div key={idx} className={`text-center p-3 rounded-lg ${data.value === whatIfBaseValue ? 'bg-white/30 ring-2 ring-white' : 'bg-white/10'}`}>
+                      <p className="text-xs opacity-80 mb-1">{data.value}{whatIfVariable.includes('Rate') || whatIfVariable.includes('Commission') || whatIfVariable.includes('Discount') || whatIfVariable.includes('Fee') ? '%' : ''}</p>
+                      <p className="text-lg font-bold">{formatCurrency(data.netProfit12Months)}</p>
+                      <p className="text-[10px] opacity-70">ربح سنوي</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  تأثير على صافي الربح (12 شهر)
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={whatIfData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis 
+                        dataKey="value" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 11 }}
+                        label={{ value: whatIfVariable, position: 'insideBottom', offset: -5 }}
+                      />
+                      <YAxis hide />
+                      <Tooltip
+                        formatter={(value: any) => formatCurrency(value)}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        labelFormatter={(label) => `${whatIfVariable}: ${label}${whatIfVariable.includes('Rate') || whatIfVariable.includes('Commission') || whatIfVariable.includes('Discount') || whatIfVariable.includes('Fee') ? '%' : ''}`}
+                      />
+                      <Bar dataKey="netProfit12Months" fill="#10b981" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  تأثير على LTV (القيمة الدائمة)
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={whatIfData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis 
+                        dataKey="value" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 11 }}
+                      />
+                      <YAxis hide />
+                      <Tooltip
+                        formatter={(value: any) => formatCurrency(value)}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Area type="monotone" dataKey="ltv" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.2} strokeWidth={3} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p className="text-sm text-slate-500 mb-2">القيمة المثلى</p>
+                <p className="text-2xl font-bold text-emerald-600">
+                  {whatIfData.reduce((max, d) => d.netProfit12Months > max.netProfit12Months ? d : max, whatIfData[0]).value}
+                  {whatIfVariable.includes('Rate') || whatIfVariable.includes('Commission') || whatIfVariable.includes('Discount') || whatIfVariable.includes('Fee') ? '%' : ''}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">تعطي أعلى ربح</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p className="text-sm text-slate-500 mb-2">أسوأ قيمة</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {whatIfData.reduce((min, d) => d.netProfit12Months < min.netProfit12Months ? d : min, whatIfData[0]).value}
+                  {whatIfVariable.includes('Rate') || whatIfVariable.includes('Commission') || whatIfVariable.includes('Discount') || whatIfVariable.includes('Fee') ? '%' : ''}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">تعطي أقل ربح</p>
+              </div>
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <p className="text-sm text-slate-500 mb-2">نطاق الربحية</p>
+                <p className="text-2xl font-bold text-indigo-600">
+                  {formatCurrency(whatIfData.reduce((max, d) => d.netProfit12Months > max ? d.netProfit12Months : max, whatIfData[0].netProfit12Months) - whatIfData.reduce((min, d) => d.netProfit12Months < min ? d.netProfit12Months : min, whatIfData[0].netProfit12Months))}
+                </p>
+                <p className="text-xs text-slate-400 mt-1">الفرق بين الأفضل والأسوأ</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+              <h4 className="font-bold text-amber-800 mb-3 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                توصية ذكية
+              </h4>
+              <p className="text-amber-700 text-sm">
+                {whatIfVariable === 'churnRate' && 'معدل الإلغاء من أهم العوامل! تخفيضه 5% يمكن أن يضاعف الأرباح. ركّز على تحسين تجربة المستخدم والمحتوى.'}
+                {whatIfVariable === 'avgSubscriptionPrice' && 'السعر يؤثر مباشرة على الإيرادات. اختبر أسعاراً مختلفة مع شرائح عملاء مختلفة قبل التعميم.'}
+                {whatIfVariable === 'partnerCount' && 'زيادة الشركاء توسع الوصول، لكن تأكد من جودة كل شريك. 10 شركاء فاعلين أفضل من 50 غير فاعلين.'}
+                {whatIfVariable === 'avgReferralsPerPartner' && 'تحسين معدل الإحالات لكل شريك أكثر فعالية من زيادة عدد الشركاء. وفّر أدوات تسويقية أفضل للشركاء.'}
+                {whatIfVariable === 'firstMonthCommission' && 'العمولة العالية تجذب الشركاء لكنها تقلل الأرباح. ابحث عن توازن يحفّز الشركاء ويحافظ على الهامش.'}
+                {whatIfVariable === 'upfrontFeePerPartner' && 'الرسوم الأولية الثابتة تزيد المخاطرة. فكّر في نموذج "عمولة فقط" للشركاء الجدد.'}
+                {!['churnRate', 'avgSubscriptionPrice', 'partnerCount', 'avgReferralsPerPartner', 'firstMonthCommission', 'upfrontFeePerPartner'].includes(whatIfVariable) && 'هذا المتغير يؤثر على النتائج. راقب تأثيره باستمرار واضبطه بناءً على الأداء الفعلي.'}
+              </p>
             </div>
           </section>
         )}
