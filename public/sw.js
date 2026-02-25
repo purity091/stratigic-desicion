@@ -1,22 +1,19 @@
-const CACHE_NAME = 'radar-investor-v1';
+const CACHE_NAME = 'radar-investor-v2';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json'
 ];
 
-// Install event - cache assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(urlsToCache);
+    })
   );
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -32,15 +29,26 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Only intercept normal http/https requests
+  if (!event.request.url.startsWith('http')) return;
+
   event.respondWith(
-    caches.match(event.request)
+    // 1. Try network first
+    fetch(event.request)
       .then((response) => {
-        if (response) {
-          return response;
+        // Cache the successful network response
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        return fetch(event.request);
+        return response;
+      })
+      .catch(() => {
+        // 2. If network fails (e.g., offline), fallback to cache
+        return caches.match(event.request);
       })
   );
 });
