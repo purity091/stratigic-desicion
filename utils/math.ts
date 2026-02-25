@@ -1,7 +1,11 @@
 
-import { SimulationInputs, SimulationMetrics } from '../types';
+import { SimulationInputs, SimulationMetrics, CostItem } from '../types';
 
-export const calculateMetrics = (inputs: SimulationInputs): SimulationMetrics => {
+export const calculateMonthlyFixedCosts = (costItems: CostItem[]): number => {
+  return costItems.reduce((sum, item) => sum + item.amount, 0);
+};
+
+export const calculateMetrics = (inputs: SimulationInputs, monthlyFixedCosts: number = 0): SimulationMetrics => {
   const {
     firstMonthCommission,
     recurringCommission,
@@ -53,11 +57,16 @@ export const calculateMetrics = (inputs: SimulationInputs): SimulationMetrics =>
   const monthlyNet = (monthlyRevenue - monthlyOpCost - (effectivePrice * recurringCommission / 100));
   const paybackPeriod = cac / Math.max(0.1, (monthlyRevenue - monthlyOpCost)); 
 
-  // Profit over time
+  // Profit over time (before fixed costs)
   const monthlyProfitPerUser = monthlyNet;
   const expectedProfit3Months = (monthlyProfitPerUser * 3 * totalSubscribers) - (totalSubscribers * firstMonthCommVal) - totalUpfrontFees;
   const expectedProfit6Months = (monthlyProfitPerUser * 6 * totalSubscribers) - (totalSubscribers * firstMonthCommVal) - totalUpfrontFees;
   const expectedProfit12Months = (monthlyProfitPerUser * 12 * totalSubscribers) - (totalSubscribers * firstMonthCommVal) - totalUpfrontFees;
+
+  // Net profit after fixed costs
+  const netProfit3Months = expectedProfit3Months - (monthlyFixedCosts * 3);
+  const netProfit6Months = expectedProfit6Months - (monthlyFixedCosts * 6);
+  const netProfit12Months = expectedProfit12Months - (monthlyFixedCosts * 12);
 
   // Break Even
   const fixedCosts = 50000;
@@ -74,7 +83,11 @@ export const calculateMetrics = (inputs: SimulationInputs): SimulationMetrics =>
     expectedProfit6Months,
     expectedProfit12Months,
     totalSubscribers,
-    totalRevenue: totalRevenueLife * totalSubscribers
+    totalRevenue: totalRevenueLife * totalSubscribers,
+    totalMonthlyFixedCosts: monthlyFixedCosts,
+    netProfit3Months,
+    netProfit6Months,
+    netProfit12Months
   };
 };
 

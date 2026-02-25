@@ -1,22 +1,115 @@
-import { useState, useMemo } from 'react';
-import { ScenarioType, SimulationInputs, RiskIndicator } from '../types';
+import { useState, useMemo, useEffect } from 'react';
+import { ScenarioType, SimulationInputs, RiskIndicator, CostItem } from '../types';
 import { DEFAULT_INPUTS } from '../constants';
 import { calculateMetrics, formatCurrency, formatPercent } from '../utils/math';
+
+const STORAGE_KEY_SETTINGS = 'simulator_settings';
+const STORAGE_KEY_COSTS = 'simulator_costs';
+
+const defaultCostItems: CostItem[] = [
+  { id: '1', name: 'إيجار المكتب', amount: 5000, type: 'fixed' },
+  { id: '2', name: 'رواتب الموظفين', amount: 15000, type: 'fixed' },
+  { id: '3', name: 'تسويق وإعلانات', amount: 3000, type: 'fixed' },
+  { id: '4', name: 'برامج وخدمات سحابية', amount: 1000, type: 'fixed' },
+];
 
 export const useSimulator = () => {
   const [activeScenario, setActiveScenario] = useState<ScenarioType>(ScenarioType.REALISTIC);
   const [inputs, setInputs] = useState<SimulationInputs>(DEFAULT_INPUTS[ScenarioType.REALISTIC]);
+  const [costItems, setCostItems] = useState<CostItem[]>(defaultCostItems);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  // Load settings and costs from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
+      const savedCosts = localStorage.getItem(STORAGE_KEY_COSTS);
+      
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        setInputs(parsed.inputs || DEFAULT_INPUTS[ScenarioType.REALISTIC]);
+        setActiveScenario(parsed.activeScenario || ScenarioType.REALISTIC);
+        setSettingsSaved(true);
+      }
+      
+      if (savedCosts) {
+        const parsedCosts = JSON.parse(savedCosts);
+        if (Array.isArray(parsedCosts) && parsedCosts.length > 0) {
+          setCostItems(parsedCosts);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load settings from localStorage', e);
+    }
+  }, []);
 
   const handleScenarioChange = (type: ScenarioType) => {
     setActiveScenario(type);
     setInputs(DEFAULT_INPUTS[type]);
+    setSettingsSaved(false);
   };
 
   const updateInput = <K extends keyof SimulationInputs>(key: K, value: number) => {
     setInputs((prev) => ({ ...prev, [key]: value }));
+    setSettingsSaved(false);
   };
 
-  const metrics = useMemo(() => calculateMetrics(inputs), [inputs]);
+  const saveSettings = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({
+        inputs,
+        activeScenario
+      }));
+      setSettingsSaved(true);
+    } catch (e) {
+      console.error('Failed to save settings', e);
+    }
+  };
+
+  const resetSettings = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY_SETTINGS);
+      localStorage.removeItem(STORAGE_KEY_COSTS);
+      setInputs(DEFAULT_INPUTS[ScenarioType.REALISTIC]);
+      setActiveScenario(ScenarioType.REALISTIC);
+      setCostItems(defaultCostItems);
+      setSettingsSaved(false);
+    } catch (e) {
+      console.error('Failed to reset settings', e);
+    }
+  };
+
+  const addCostItem = (name: string, amount: number, type: 'fixed' | 'variable' = 'fixed') => {
+    const newItem: CostItem = {
+      id: Date.now().toString(),
+      name,
+      amount,
+      type
+    };
+    const updated = [...costItems, newItem];
+    setCostItems(updated);
+    localStorage.setItem(STORAGE_KEY_COSTS, JSON.stringify(updated));
+  };
+
+  const updateCostItem = (id: string, updates: Partial<CostItem>) => {
+    const updated = costItems.map(item => 
+      item.id === id ? { ...item, ...updates } : item
+    );
+    setCostItems(updated);
+    localStorage.setItem(STORAGE_KEY_COSTS, JSON.stringify(updated));
+  };
+
+  const deleteCostItem = (id: string) => {
+    const updated = costItems.filter(item => item.id !== id);
+    setCostItems(updated);
+    localStorage.setItem(STORAGE_KEY_COSTS, JSON.stringify(updated));
+  };
+
+  const totalMonthlyFixedCosts = useMemo(() => {
+    return costItems.reduce((sum, item) => item.type === 'fixed' ? sum + item.amount : sum, 0);
+  }, [costItems]);
+
+  const metrics = useMemo(() => calculateMetrics(inputs, totalMonthlyFixedCosts), [inputs, totalMonthlyFixedCosts]);
 
   const strategicAdvice = useMemo(() => {
     const advices: Array<{ title: string; content: string; type: 'info' | 'warning' | 'positive' }> = [];
@@ -110,6 +203,15 @@ export const useSimulator = () => {
     metrics,
     strategicAdvice,
     riskIndicators,
-    chartData
+    chartData,
+    // Settings & Costs
+    saveSettings,
+    resetSettings,
+    settingsSaved,
+    costItems,
+    addCostItem,
+    updateCostItem,
+    deleteCostItem,
+    totalMonthlyFixedCosts
   };
 };
