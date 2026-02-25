@@ -1,0 +1,46 @@
+.card {
+    padding: 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.icon {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.title {
+    font-weight: 700;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.content {
+    font-size: 0.75rem;
+    opacity: 0.9;
+}
+
+.info {
+    background-color: #eff6ff;
+    border-color: #dbeafe;
+    color: #1e40af;
+}
+
+.warning {
+    background-color: #fffbeb;
+    border-color: #fef3c7;
+    color: #92400e;
+}
+
+.positive {
+    background-color: #ecfdf5;
+    border-color: #d1fae5;
+    color: #065f46;
+}

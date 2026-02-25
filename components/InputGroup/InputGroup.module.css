@@ -1,0 +1,20 @@
+.container {
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.childrenWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}

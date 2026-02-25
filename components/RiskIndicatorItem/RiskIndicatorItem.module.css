@@ -1,0 +1,45 @@
+.container {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background-color: #f8fafc;
+    border-radius: 0.5rem;
+    border: 1px solid #f1f5f9;
+}
+
+.indicator {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 9999px;
+    margin-top: 0.25rem;
+    flex-shrink: 0;
+}
+
+.contentWrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+.title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.description {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.safe {
+    background-color: #10b981;
+}
+
+.warning {
+    background-color: #f59e0b;
+}
+
+.danger {
+    background-color: #ef4444;
+}
